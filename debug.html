@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auth Debug | Nexus Collective</title>
+  <style>
+    body {
+      background: #03000a;
+      color: #ddd0f0;
+      font-family: monospace;
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 { color: #c400ff; }
+    .status { 
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 4px;
+      border: 1px solid rgba(196, 0, 255, 0.3);
+      background: rgba(196, 0, 255, 0.05);
+    }
+    .success { border-color: rgba(100, 220, 100, 0.5); background: rgba(100, 220, 100, 0.05); }
+    .error { border-color: rgba(255, 53, 85, 0.5); background: rgba(255, 53, 85, 0.05); }
+    pre { 
+      background: #0b0415;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 11px;
+    }
+    button {
+      background: #c400ff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      margin: 5px;
+    }
+    button:hover { background: #d200ff; }
+  </style>
+</head>
+<body>
+  <h1>// NEXUS AUTH DEBUG</h1>
+  
+  <div id="status"></div>
+  
+  <button onclick="checkSession()">Check Session</button>
+  <button onclick="checkProfile()">Check Profile</button>
+  <button onclick="testEdgeFunction()">Test Edge Function</button>
+  <button onclick="clearStorage()">Clear Storage</button>
+  <button onclick="window.location.href='index.html'">Back to Home</button>
+  
+  <div id="output"></div>
+
+  <script type="module">
+    import { supabase, getProfile, callOnLogin } from './js/supabase-client.js'
+    
+    window.supabase = supabase
+    window.getProfile = getProfile
+    window.callOnLogin = callOnLogin
+    
+    async function init() {
+      const status = document.getElementById('status')
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        status.innerHTML = `<div class="status success">✓ Logged in as: ${session.user.email}<br>User ID: ${session.user.id}</div>`
+      } else {
+        status.innerHTML = `<div class="status error">✗ Not logged in</div>`
+      }
+    }
+    
+    window.checkSession = async function() {
+      const output = document.getElementById('output')
+      output.innerHTML = '<p>Checking session...</p>'
+      
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        output.innerHTML = `<div class="status error">Error: ${error.message}</div>`
+        return
+      }
+      
+      if (!session) {
+        output.innerHTML = `<div class="status error">No active session</div>`
+        return
+      }
+      
+      output.innerHTML = `
+        <div class="status success">Session found</div>
+        <pre>${JSON.stringify(session.user, null, 2)}</pre>
+      `
+    }
+    
+    window.checkProfile = async function() {
+      const output = document.getElementById('output')
+      output.innerHTML = '<p>Checking profile...</p>'
+      
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        output.innerHTML = `<div class="status error">Not logged in</div>`
+        return
+      }
+      
+      const profile = await getProfile(session.user.id)
+      
+      if (!profile) {
+        output.innerHTML = `<div class="status error">No profile found for user ${session.user.id}<br><br>This usually means:<br>1. The database trigger didn't create the profile<br>2. RLS policies are blocking the read<br>3. The profile table doesn't exist</div>`
+        return
+      }
+      
+      output.innerHTML = `
+        <div class="status success">Profile found</div>
+        <pre>${JSON.stringify(profile, null, 2)}</pre>
+      `
+    }
+    
+    window.testEdgeFunction = async function() {
+      const output = document.getElementById('output')
+      output.innerHTML = '<p>Testing edge function...</p>'
+      
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        output.innerHTML = `<div class="status error">Not logged in</div>`
+        return
+      }
+      
+      const result = await callOnLogin(session.access_token)
+      
+      if (!result) {
+        output.innerHTML = `<div class="status error">Edge function failed or not deployed<br><br>Check the browser console for detailed error messages</div>`
+        return
+      }
+      
+      output.innerHTML = `
+        <div class="status success">Edge function working</div>
+        <pre>${JSON.stringify(result, null, 2)}</pre>
+      `
+    }
+    
+    window.clearStorage = async function() {
+      if (!confirm('This will sign you out. Continue?')) return
+      
+      await supabase.auth.signOut()
+      localStorage.clear()
+      sessionStorage.clear()
+      
+      window.location.reload()
+    }
+    
+    init()
+  </script>
+</body>
+</html>
