@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard | Nexus Collective</title>
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    /* ── DASHBOARD AUTH GATE ─────────────────────────────── */
+    #dash-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+      transition: opacity 0.5s ease;
+    }
+    #dash-gate.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .gate-spinner {
+      width: 38px;
+      height: 38px;
+      border: 2px solid rgba(196,0,255,0.15);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .gate-label {
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .gate-error {
+      font-size: 12px;
+      color: var(--red);
+      letter-spacing: 0.1em;
+      text-align: center;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────── */
+    .dash-wrap {
+      position: relative;
+      z-index: 10;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 90px 28px 60px;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .dash-wrap.visible { opacity: 1; }
+
+    /* ── HEADER ──────────────────────────────────────────── */
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 36px;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .dash-title-group { display: flex; flex-direction: column; gap: 4px; }
+    .dash-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: #fff;
+    }
+    .dash-subtitle {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--text-muted);
+    }
+    .dash-admin-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: var(--accent-dim);
+      border-radius: 2px;
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+    }
+    .dash-admin-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--border-h);
+    }
+    .dash-admin-name {
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+    }
+
+    /* ── STATS ROW ───────────────────────────────────────── */
+    .dash-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 16px 18px;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+    }
+    .stat-label {
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .stat-value.red   { color: var(--red); }
+    .stat-value.blue  { color: var(--accent-2); }
+    .stat-value.teal  { color: rgba(100,220,200,0.9); }
+
+    /* ── TOOLBAR ─────────────────────────────────────────── */
+    .dash-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .dash-search {
+      flex: 1;
+      min-width: 200px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 9px 14px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .dash-search:focus { border-color: rgba(196,0,255,0.5); }
+    .dash-search::placeholder { color: var(--text-muted); }
+    .dash-filter {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 9px 12px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      outline: none;
+      cursor: pointer;
+    }
+    .dash-filter:focus { border-color: rgba(196,0,255,0.4); }
+    .dash-count {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* ── MEMBER TABLE ────────────────────────────────────── */
+    .members-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: var(--card-bg);
+    }
+    table.members-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .members-table th {
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      background: rgba(0,0,0,0.2);
+      font-weight: 400;
+    }
+    .members-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(180,0,255,0.06);
+      color: var(--text-dim);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .members-table tr:last-child td { border-bottom: none; }
+    .members-table tr:hover td { background: rgba(196,0,255,0.03); }
+
+    /* avatar cell */
+    .td-avatar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .td-avatar img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg-2);
+    }
+    .td-username { color: var(--text); font-weight: 500; }
+    .td-email    { color: var(--text-muted); font-size: 10px; }
+
+    /* role badge */
+    .role-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    .role-visitor   { background: rgba(74,56,104,0.3); color: var(--text-muted); border: 1px solid rgba(74,56,104,0.4); }
+    .role-member    { background: rgba(139,159,255,0.1); color: var(--accent-2); border: 1px solid rgba(139,159,255,0.3); }
+    .role-trusted   { background: rgba(100,220,200,0.08); color: rgba(100,220,200,0.9); border: 1px solid rgba(100,220,200,0.25); }
+    .role-admin     { background: rgba(196,0,255,0.1); color: var(--accent); border: 1px solid rgba(196,0,255,0.35); }
+    .role-superadmin{ background: rgba(255,200,50,0.1); color: rgba(255,210,60,0.95); border: 1px solid rgba(255,200,50,0.3); }
+
+    .locked-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      background: rgba(255,53,85,0.1);
+      color: var(--red);
+      border: 1px solid rgba(255,53,85,0.3);
+    }
+    .contrib-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 2px;
+      font-size: 8px;
+      letter-spacing: 0.15em;
+      background: rgba(100,220,200,0.07);
+      color: rgba(100,220,200,0.8);
+      border: 1px solid rgba(100,220,200,0.2);
+      margin-left: 4px;
+    }
+
+    /* ip cell */
+    .td-ip { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+    .td-tz { font-size: 10px; color: var(--text-muted); }
+
+    /* action buttons */
+    .td-actions { display: flex; gap: 6px; align-items: center; }
+    .btn-edit {
+      background: var(--accent-dim);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      padding: 5px 10px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.18s;
+      text-transform: uppercase;
+    }
+    .btn-edit:hover { background: rgba(196,0,255,0.18); border-color: var(--accent); }
+    .btn-lock {
+      background: rgba(255,53,85,0.07);
+      border: 1px solid rgba(255,53,85,0.2);
+      color: var(--red);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      padding: 5px 10px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.18s;
+      text-transform: uppercase;
+    }
+    .btn-lock:hover { background: rgba(255,53,85,0.15); border-color: var(--red); }
+    .btn-unlock {
+      background: rgba(100,220,100,0.07);
+      border: 1px solid rgba(100,220,100,0.2);
+      color: rgba(100,220,150,0.9);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      padding: 5px 10px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.18s;
+      text-transform: uppercase;
+    }
+    .btn-unlock:hover { background: rgba(100,220,100,0.14); border-color: rgba(100,220,150,0.5); }
+
+    /* empty state */
+    .table-empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+    }
+
+    /* loading row */
+    .table-loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--accent);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    /* ── EDIT MODAL ──────────────────────────────────────── */
+    #edit-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9500;
+      background: rgba(3,0,10,0.88);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      animation: fadeIn 0.2s ease;
+    }
+    #edit-modal[hidden] { display: none !important; }
+
+    .modal-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border-h);
+      border-radius: 2px;
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 480px;
+      clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+      position: relative;
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .modal-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 24px;
+    }
+    .modal-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .modal-label {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .modal-select, .modal-input {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    .modal-select:focus, .modal-input:focus { border-color: rgba(196,0,255,0.5); }
+    .modal-select option { background: var(--card-bg); }
+
+    .modal-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-toggle-row:last-of-type { border-bottom: none; margin-bottom: 8px; }
+    .modal-toggle-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+    .modal-toggle-desc {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      margin-top: 1px;
+    }
+
+    /* toggle switch */
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: rgba(74,56,104,0.4);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+      border: 1px solid var(--border);
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      transition: left 0.2s, background 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-track {
+      background: rgba(196,0,255,0.25);
+      border-color: rgba(196,0,255,0.5);
+    }
+    .toggle-switch input:checked + .toggle-track::after {
+      left: 19px;
+      background: var(--accent);
+    }
+
+    .modal-btns {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+    .btn-save {
+      flex: 1;
+      background: rgba(196,0,255,0.15);
+      border: 1px solid rgba(196,0,255,0.45);
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      padding: 10px;
+      border-radius: 2px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+    .btn-save:hover { background: rgba(196,0,255,0.25); }
+    .btn-save:disabled { opacity: 0.4; pointer-events: none; }
+    .btn-cancel {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      padding: 10px 18px;
+      border-radius: 2px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+    .btn-cancel:hover { border-color: rgba(180,0,255,0.4); color: var(--text-dim); }
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 16px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    /* toast */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      z-index: 9999;
+      background: var(--card-bg);
+      border: 1px solid var(--border-h);
+      border-radius: 2px;
+      padding: 12px 20px;
+      font-size: 11px;
+      color: var(--text);
+      letter-spacing: 0.08em;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.25s ease;
+      pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: rgba(100,220,150,0.5); color: rgba(100,220,150,0.9); }
+    #toast.error   { border-color: rgba(255,53,85,0.5);  color: var(--red); }
+
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .dash-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .dash-stats { grid-template-columns: repeat(2, 1fr); }
+      .dash-wrap  { padding: 80px 14px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- AUTH GATE — stays visible until admin check passes -->
+  <div id="dash-gate">
+    <div class="gate-spinner" id="gate-spinner"></div>
+    <span class="gate-label" id="gate-label">verifying access...</span>
+  </div>
+
+  <canvas id="particles-canvas" aria-hidden="true"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <nav class="site-nav" role="navigation">
+    <a href="index.html" class="nav-logo" aria-label="Nexus Collective">
+      <span class="nav-logo-mark">N</span>
+      <span class="nav-logo-text">EXUS</span>
+    </a>
+    <div class="nav-auth" id="nav-auth"></div>
+  </nav>
+
+  <!-- EDIT MODAL -->
+  <div id="edit-modal" hidden role="dialog" aria-modal="true" aria-label="Edit Member">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+      <p class="modal-title">EDIT MEMBER</p>
+      <p class="modal-sub" id="modal-sub">// modifying profile</p>
+
+      <div class="modal-field">
+        <label class="modal-label" for="modal-role">Role</label>
+        <select class="modal-select" id="modal-role">
+          <option value="visitor">visitor</option>
+          <option value="member">member</option>
+          <option value="trusted">trusted</option>
+          <option value="admin">admin</option>
+        </select>
+      </div>
+
+      <div class="modal-toggle-row">
+        <div>
+          <div class="modal-toggle-label">Contributor</div>
+          <div class="modal-toggle-desc">shows CONTRIBUTOR badge in nav</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="modal-contributor" />
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+      <div class="modal-toggle-row">
+        <div>
+          <div class="modal-toggle-label">Locked</div>
+          <div class="modal-toggle-desc">blocks all platform access</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="modal-locked" />
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+      <div class="modal-field" id="lock-reason-field" style="margin-top:12px">
+        <label class="modal-label" for="modal-lock-reason">Lock Reason <span style="opacity:.5">(optional)</span></label>
+        <input class="modal-input" id="modal-lock-reason" type="text" placeholder="e.g. suspicious activity" maxlength="200" />
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-save" id="btn-save">Save Changes</button>
+        <button class="btn-cancel" id="btn-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast"></div>
+
+  <!-- DASHBOARD CONTENT -->
+  <main class="dash-wrap" id="dash-wrap">
+
+    <div class="dash-header">
+      <div class="dash-title-group">
+        <h1 class="dash-title">// ADMIN PANEL</h1>
+        <p class="dash-subtitle">nexus collective &nbsp;·&nbsp; member management</p>
+      </div>
+      <div class="dash-admin-badge" id="dash-admin-badge" style="display:none">
+        <img src="" alt="" class="dash-admin-avatar" id="dash-admin-avatar" />
+        <span class="dash-admin-name" id="dash-admin-name"></span>
+      </div>
+    </div>
+
+    <!-- stats -->
+    <div class="dash-stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Members</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Locked</div>
+        <div class="stat-value red" id="stat-locked">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Contributors</div>
+        <div class="stat-value teal" id="stat-contrib">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Admins</div>
+        <div class="stat-value blue" id="stat-admins">—</div>
+      </div>
+    </div>
+
+    <!-- toolbar -->
+    <div class="dash-toolbar">
+      <input
+        class="dash-search"
+        id="dash-search"
+        type="text"
+        placeholder="// search username, discord id, ip..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <select class="dash-filter" id="dash-filter">
+        <option value="all">all roles</option>
+        <option value="visitor">visitor</option>
+        <option value="member">member</option>
+        <option value="trusted">trusted</option>
+        <option value="admin">admin</option>
+        <option value="locked">locked</option>
+        <option value="contributor">contributor</option>
+      </select>
+      <span class="dash-count" id="dash-count">0 members</span>
+    </div>
+
+    <!-- table -->
+    <div class="members-table-wrap">
+      <table class="members-table" id="members-table">
+        <thead>
+          <tr>
+            <th>Member</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Last IP</th>
+            <th>Timezone</th>
+            <th>Last Seen</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="members-tbody">
+          <tr><td colspan="7" class="table-loading">// loading members...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>// nexus collective &nbsp;&bull;&nbsp; admin panel &nbsp;&bull;&nbsp; <span id="year"></span></p>
+  </footer>
+
+  <script src="js/particles.js"></script>
+  <script type="module">
+    import { supabase, signOut } from './js/supabase-client.js'
+
+    /* ── state ─────────────────────────────────────────── */
+    let allMembers    = []
+    let filteredList  = []
+    let editingUserId = null
+    let currentAdmin  = null
+
+    /* ── elements ──────────────────────────────────────── */
+    const gate        = document.getElementById('dash-gate')
+    const gateLabel   = document.getElementById('gate-label')
+    const gateSpinner = document.getElementById('gate-spinner')
+    const dashWrap    = document.getElementById('dash-wrap')
+
+    document.getElementById('year').textContent = new Date().getFullYear()
+
+    /* ── STEP 1: verify session ────────────────────────── */
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        kick('no session — redirecting...')
+        return
+      }
+
+      /* ── STEP 2: fetch profile and confirm admin role ── */
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error || !profile) {
+        kick('could not verify profile')
+        return
+      }
+
+      const isAdmin = profile.is_super_admin === true || profile.role === 'admin'
+
+      if (!isAdmin) {
+        kick('access denied — admin only')
+        return
+      }
+
+      /* ── STEP 3: passed — reveal dashboard ─────────────
+         keep the gate visible a beat longer so it doesn't
+         flash away instantly, then fade it out             */
+      currentAdmin = { session, profile }
+
+      gateSpinner.style.display = 'none'
+      gateLabel.textContent     = '✓ access granted'
+      gateLabel.style.color     = 'rgba(100,220,150,0.9)'
+      gateLabel.style.animation = 'none'
+
+      setTimeout(() => {
+        gate.classList.add('hidden')
+        dashWrap.classList.add('visible')
+        gate.addEventListener('transitionend', () => gate.style.display = 'none', { once: true })
+      }, 700)
+
+      renderAdminBadge(session.user, profile)
+      buildNavSignout(session.user, profile)
+      await loadMembers()
+    }
+
+    function kick(msg) {
+      gateSpinner.style.display = 'none'
+      gateLabel.style.display   = 'none'
+      const err = document.createElement('div')
+      err.className = 'gate-error'
+      err.innerHTML = `// ${msg}<br><br><a href="index.html" style="color:var(--accent);text-decoration:none;letter-spacing:.1em;font-size:10px;">← return to nexus</a>`
+      gate.appendChild(err)
+    }
+
+    /* ── admin badge in header ─────────────────────────── */
+    function renderAdminBadge(user, profile) {
+      const badge  = document.getElementById('dash-admin-badge')
+      const avatar = document.getElementById('dash-admin-avatar')
+      const name   = document.getElementById('dash-admin-name')
+      const avatarUrl = profile.avatar_url || ''
+      const username  = profile.username || user.email?.split('@')[0] || 'admin'
+      avatar.src = avatarUrl
+      name.textContent = username + (profile.is_super_admin ? ' [SUPER]' : ' [ADMIN]')
+      badge.style.display = 'flex'
+    }
+
+    /* ── nav sign out ──────────────────────────────────── */
+    function buildNavSignout(user, profile) {
+      const navAuth = document.getElementById('nav-auth')
+      const username = profile.username || 'admin'
+      navAuth.innerHTML = `
+        <span style="font-size:10px;color:var(--text-muted);letter-spacing:.1em;">${esc(username)}</span>
+        <button class="btn btn-secondary" id="btn-signout" style="padding:7px 14px;font-size:10px;">sign out</button>
+      `
+      document.getElementById('btn-signout').addEventListener('click', async () => {
+        await signOut()
+        window.location.href = 'index.html'
+      })
+    }
+
+    /* ── LOAD ALL MEMBERS ──────────────────────────────── */
+    async function loadMembers() {
+      const tbody = document.getElementById('members-tbody')
+      tbody.innerHTML = '<tr><td colspan="7" class="table-loading">// fetching members...</td></tr>'
+
+      /*
+        we need email too — that lives in auth.users not profiles
+        we do a join via the admin client using the service role
+        BUT: from the browser we only have the anon key, so we can't
+        read auth.users directly. Instead we call a tiny postgres RPC
+        that the service role set up, OR we just display what we have
+        from profiles + ip_logs and note email is not accessible client-side.
+
+        The cleanest browser-safe approach: read profiles (we have RLS policy
+        for admin reads — need to add one), then read ip_logs for last ip.
+        Email is stored in auth.users which requires service role.
+        We'll show the discord_id as a proxy and note this in the UI.
+      */
+
+      /* fetch all profiles — requires an admin read policy (see SQL below) */
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="7" class="table-empty">// error loading members: ${esc(error.message)}</td></tr>`
+        return
+      }
+
+      /* fetch latest ip log per user for last ip + timezone */
+      const { data: ipRows } = await supabase
+        .from('ip_logs')
+        .select('user_id, ip_address, timezone, logged_at')
+        .order('logged_at', { ascending: false })
+
+      /* build a map: user_id → latest ip log */
+      const ipMap = {}
+      if (ipRows) {
+        for (const row of ipRows) {
+          if (!ipMap[row.user_id]) ipMap[row.user_id] = row
+        }
+      }
+
+      allMembers = profiles.map(p => ({
+        ...p,
+        last_ip_log: ipMap[p.id] || null,
+      }))
+
+      updateStats()
+      renderTable(allMembers)
+      setupSearch()
+    }
+
+    /* ── STATS ─────────────────────────────────────────── */
+    function updateStats() {
+      document.getElementById('stat-total').textContent  = allMembers.length
+      document.getElementById('stat-locked').textContent = allMembers.filter(m => m.locked).length
+      document.getElementById('stat-contrib').textContent= allMembers.filter(m => m.is_contributor).length
+      document.getElementById('stat-admins').textContent = allMembers.filter(m => m.role === 'admin' || m.is_super_admin).length
+    }
+
+    /* ── RENDER TABLE ──────────────────────────────────── */
+    function renderTable(members) {
+      const tbody = document.getElementById('members-tbody')
+      filteredList = members
+
+      document.getElementById('dash-count').textContent = `${members.length} member${members.length !== 1 ? 's' : ''}`
+
+      if (!members.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="table-empty">// no members found</td></tr>'
+        return
+      }
+
+      tbody.innerHTML = members.map(m => {
+        const avatarUrl  = m.avatar_url || ''
+        const username   = m.username || 'unknown'
+        const discordId  = m.discord_id || '—'
+        const ipLog      = m.last_ip_log
+        const lastIp     = ipLog?.ip_address || m.last_ip || '—'
+        const timezone   = ipLog?.timezone   || m.last_timezone || '—'
+        const lastSeen   = m.last_seen ? formatDate(m.last_seen) : '—'
+
+        const roleCls = m.is_super_admin ? 'role-superadmin'
+                      : m.role === 'admin'   ? 'role-admin'
+                      : m.role === 'trusted' ? 'role-trusted'
+                      : m.role === 'member'  ? 'role-member'
+                      : 'role-visitor'
+
+        const roleLabel = m.is_super_admin ? 'super admin' : m.role
+
+        const contribBadge = m.is_contributor
+          ? `<span class="contrib-badge">contrib</span>`
+          : ''
+
+        const lockedBadge = m.locked
+          ? `<span class="locked-badge">locked</span>`
+          : ''
+
+        const lockBtn = m.locked
+          ? `<button class="btn-unlock" onclick="openEdit('${m.id}')">Unlock</button>`
+          : `<button class="btn-lock"   onclick="openEdit('${m.id}')">Lock</button>`
+
+        /* don't show edit/lock for super admins unless current user IS super admin */
+        const isSelf = m.id === currentAdmin?.profile?.id
+        const targetIsSuperAdmin = m.is_super_admin === true
+        const canEdit = !targetIsSuperAdmin || currentAdmin?.profile?.is_super_admin
+
+        const actions = canEdit ? `
+          <div class="td-actions">
+            <button class="btn-edit" onclick="openEdit('${m.id}')">Edit</button>
+            ${lockBtn}
+          </div>
+        ` : `<span style="font-size:9px;color:var(--text-muted);letter-spacing:.1em;">PROTECTED</span>`
+
+        return `
+          <tr data-id="${m.id}">
+            <td>
+              <div class="td-avatar">
+                <img src="${esc(avatarUrl)}" alt="" onerror="this.style.display='none'" />
+                <div>
+                  <div class="td-username">${esc(username)} ${contribBadge}</div>
+                  <div class="td-email">${esc(discordId)}</div>
+                </div>
+              </div>
+            </td>
+            <td class="td-email" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="${esc(m.id)}">
+              ${esc(m.id.slice(0,16))}…
+            </td>
+            <td>
+              <span class="role-badge ${roleCls}">${esc(roleLabel)}</span>
+              ${lockedBadge}
+            </td>
+            <td class="td-ip">${esc(lastIp)}</td>
+            <td class="td-tz">${esc(timezone)}</td>
+            <td class="td-ip">${esc(lastSeen)}</td>
+            <td>${actions}</td>
+          </tr>
+        `
+      }).join('')
+    }
+
+    /* ── SEARCH + FILTER ───────────────────────────────── */
+    function setupSearch() {
+      const searchEl = document.getElementById('dash-search')
+      const filterEl = document.getElementById('dash-filter')
+
+      function apply() {
+        const q      = searchEl.value.toLowerCase().trim()
+        const filter = filterEl.value
+
+        let list = allMembers
+
+        if (filter === 'locked')      list = list.filter(m => m.locked)
+        else if (filter === 'contributor') list = list.filter(m => m.is_contributor)
+        else if (filter !== 'all')    list = list.filter(m => m.role === filter)
+
+        if (q) {
+          list = list.filter(m =>
+            (m.username    || '').toLowerCase().includes(q) ||
+            (m.discord_id  || '').toLowerCase().includes(q) ||
+            (m.last_ip_log?.ip_address || m.last_ip || '').toLowerCase().includes(q) ||
+            (m.id          || '').toLowerCase().includes(q)
+          )
+        }
+
+        renderTable(list)
+      }
+
+      searchEl.addEventListener('input', apply)
+      filterEl.addEventListener('change', apply)
+    }
+
+    /* ── EDIT MODAL ────────────────────────────────────── */
+    window.openEdit = function(userId) {
+      const member = allMembers.find(m => m.id === userId)
+      if (!member) return
+
+      editingUserId = userId
+
+      document.getElementById('modal-sub').textContent = `// ${member.username || userId}`
+      document.getElementById('modal-role').value       = member.role || 'visitor'
+      document.getElementById('modal-contributor').checked = !!member.is_contributor
+      document.getElementById('modal-locked').checked      = !!member.locked
+      document.getElementById('modal-lock-reason').value   = member.lock_reason || ''
+
+      document.getElementById('edit-modal').hidden = false
+    }
+
+    document.getElementById('modal-close').addEventListener('click', closeModal)
+    document.getElementById('btn-cancel').addEventListener('click', closeModal)
+    document.getElementById('edit-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('edit-modal')) closeModal()
+    })
+
+    function closeModal() {
+      document.getElementById('edit-modal').hidden = true
+      editingUserId = null
+    }
+
+    document.getElementById('btn-save').addEventListener('click', async () => {
+      if (!editingUserId) return
+
+      const saveBtn = document.getElementById('btn-save')
+      saveBtn.disabled = true
+      saveBtn.textContent = 'Saving...'
+
+      const newRole       = document.getElementById('modal-role').value
+      const newContrib    = document.getElementById('modal-contributor').checked
+      const newLocked     = document.getElementById('modal-locked').checked
+      const newLockReason = document.getElementById('modal-lock-reason').value.trim()
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          role:           newRole,
+          is_contributor: newContrib,
+          locked:         newLocked,
+          lock_reason:    newLocked ? (newLockReason || null) : null,
+        })
+        .eq('id', editingUserId)
+
+      saveBtn.disabled = false
+      saveBtn.textContent = 'Save Changes'
+
+      if (error) {
+        showToast('error saving: ' + error.message, 'error')
+        return
+      }
+
+      /* update local state */
+      const idx = allMembers.findIndex(m => m.id === editingUserId)
+      if (idx !== -1) {
+        allMembers[idx].role           = newRole
+        allMembers[idx].is_contributor = newContrib
+        allMembers[idx].locked         = newLocked
+        allMembers[idx].lock_reason    = newLocked ? newLockReason : null
+      }
+
+      updateStats()
+      /* re-apply current search/filter */
+      document.getElementById('dash-search').dispatchEvent(new Event('input'))
+
+      closeModal()
+      showToast('profile updated', 'success')
+    })
+
+    /* ── TOAST ─────────────────────────────────────────── */
+    function showToast(msg, type = '') {
+      const toast = document.getElementById('toast')
+      toast.textContent = msg
+      toast.className = `show ${type}`
+      clearTimeout(toast._timer)
+      toast._timer = setTimeout(() => { toast.className = '' }, 3000)
+    }
+
+    /* ── HELPERS ───────────────────────────────────────── */
+    function formatDate(iso) {
+      if (!iso) return '—'
+      const d = new Date(iso)
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+           + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    }
+
+    function esc(str) {
+      if (typeof str !== 'string') return ''
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+    }
+
+    init()
+  </script>
+
+</body>
+</html>
