@@ -1,199 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NEXUS COLLECTIVE</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nexus Collective</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
-  <!-- ─── LOCK SCREEN ──────────────────────────────────────── -->
-  <div id="lock-screen" class="fullscreen-fixed hidden" aria-hidden="true">
+  <!-- cursor -->
+  <div id="cur-dot"></div>
+  <div id="cur-ring"></div>
+
+  <!-- bg -->
+  <div class="bg-overlay"></div>
+  <div id="preloader"><div class="pre-ring"></div></div>
+
+  <!-- ── LOCK SCREEN ────────────────────────────────────────── -->
+  <div id="lock-screen" class="lock-screen hidden">
     <div class="lock-inner">
-      <svg class="lock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" class="lock-icon">
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
       </svg>
-      <h2 class="lock-title">ACCOUNT LOCKED</h2>
-      <p class="lock-desc">
-        A new IP address was detected on your account.<br />
-        Contact an administrator to restore access.
+      <div class="lock-title">ACCOUNT LOCKED</div>
+      <p class="lock-body" id="lock-reason">
+        An IP address change was detected on your account.<br/>
+        Contact an admin to appeal.
       </p>
     </div>
   </div>
 
-  <!-- ─── BG LAYERS (always fixed) ────────────────────────── -->
-  <div class="bg-img"       aria-hidden="true"></div>
-  <div class="bg-vignette"  aria-hidden="true"></div>
-  <div class="bg-scanlines" aria-hidden="true"></div>
-
-  <!-- ─── PAGE WRAPPER ─────────────────────────────────────── -->
-  <div id="page-wrapper">
-
-    <!-- Top nav (shown after login) -->
-    <nav id="top-nav" class="hidden" aria-label="User navigation">
-      <div class="nav-user">
-        <img id="nav-avatar" src="" alt="User avatar" class="nav-avatar" />
-        <span id="nav-username" class="nav-name"></span>
+  <!-- ── NAV ───────────────────────────────────────────────── -->
+  <nav class="site-nav">
+    <a href="index.html" class="nav-logo">
+      <div class="nav-logo-dot"></div>
+      NEXUS
+    </a>
+    <div class="nav-right">
+      <div class="nav-user hidden" id="nav-user">
+        <div class="nav-avatar" id="nav-avatar-wrap">
+          <img id="nav-avatar-img" src="assets/user.svg" alt="user" width="14" height="14"/>
+        </div>
+        <span class="nav-username" id="nav-uname"></span>
+        <button class="nav-logout" id="btn-logout" onclick="logout()">logout</button>
       </div>
-      <button class="btn-cube btn-sm" onclick="logout()">LOG OUT</button>
-    </nav>
+    </div>
+  </nav>
 
-    <!-- ══════════════════════════════════════════════════════
-         HERO SECTION
-         ══════════════════════════════════════════════════════ -->
-    <section id="hero-section">
-      <div class="hero-inner">
-        <p class="hero-eyebrow">WELCOME TO THE</p>
-        <h1 class="hero-title">NEXUS</h1>
-        <h2 class="hero-subtitle">COLLECTIVE</h2>
-        <div class="hero-divider" aria-hidden="true"></div>
+  <!-- ── HERO ──────────────────────────────────────────────── -->
+  <section id="hero">
+    <div class="hero-inner">
 
-        <div id="login-area">
-          <p class="hero-desc">A private resource hub. Login with Discord to request access.</p>
-          <div class="btn-bevel-wrap">
-            <button class="btn-cube btn-discord" id="login-btn" onclick="openTos()">
-              <img src="assets/discord.svg" alt="" class="btn-icon" aria-hidden="true" />
-              <span>Login with Discord</span>
-            </button>
-          </div>
-        </div>
+      <div class="hero-eyebrow">private resource server</div>
 
-        <!-- Shown after successful auth -->
-        <div id="welcome-area" class="hidden">
-          <p class="welcome-text">You're in. Welcome back.</p>
-        </div>
-      </div>
-    </section>
+      <h1 class="hero-title">NEXUS</h1>
+      <span class="hero-subtitle">COLLECTIVE</span>
 
-    <!-- ══════════════════════════════════════════════════════
-         TOS SECTION — transforms into view on openTos()
-         ══════════════════════════════════════════════════════ -->
-    <section id="tos-section" class="tos-hidden" aria-label="Terms of Service">
-
-      <!-- Sticky bar pinned to top of viewport while user scrolls -->
-      <div class="tos-topbar" id="tos-topbar">
-        <div class="tos-topbar-left">
-          <button class="btn-cube btn-sm" onclick="closeTos()" aria-label="Go back">
-            ← BACK
-          </button>
-          <h2 class="tos-heading">TERMS OF SERVICE</h2>
-        </div>
-        <span class="tos-scroll-hint" id="scroll-hint">↓ Scroll to the bottom to accept</span>
+      <div class="roblox-tag">
+        <div class="roblox-tag-dot"></div>
+        Roblox &amp; Luau based language server
       </div>
 
-      <!-- Scrollable body — the real page scrollbar handles this -->
-      <div class="tos-body" id="tos-body">
+      <p class="hero-desc">
+        A gated community for developers building asymmetric horror and survival experiences.
+        Resources shared here don't leave here.
+      </p>
 
-        <div class="tos-section-block">
-          <h3>1. Introduction</h3>
-          <p>TODO — Add your terms of service content here. This is page 1 of 10.</p>
-          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-          <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-        </div>
+      <!-- guest state — shown by default -->
+      <div class="hero-btns" id="hero-btns-guest">
+        <button class="btn-discord" id="btn-login" onclick="openTos()">
+          <img src="assets/discord.svg" alt="Discord" width="18" height="14"/>
+          Login with Discord
+        </button>
+      </div>
 
-        <div class="tos-section-block">
-          <h3>2. Eligibility &amp; Access</h3>
-          <p>TODO — Page 2 content.</p>
-          <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
-          <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.</p>
-        </div>
+      <!-- pending: logged in but membership = default -->
+      <div class="auth-notice pending hidden" id="notice-pending">
+        <strong>PENDING APPROVAL</strong>
+        Your account is registered. A Nexus admin will assign your role. Sit tight.
+      </div>
 
-        <div class="tos-section-block">
-          <h3>3. User Conduct</h3>
-          <p>TODO — Page 3 content.</p>
-          <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.</p>
-          <p>Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.</p>
-        </div>
+      <!-- locked -->
+      <div class="auth-notice locked hidden" id="notice-locked">
+        <strong>ACCOUNT LOCKED</strong>
+        IP address change detected. Contact an admin to appeal.
+      </div>
 
-        <div class="tos-section-block">
-          <h3>4. Data Collection</h3>
-          <p>TODO — Page 4 content.</p>
-          <p>By using this platform, you acknowledge that we collect your Discord username, email address, IP address, timezone, and related metadata for the purposes of authentication, security, and access management.</p>
-          <p>Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus.</p>
-        </div>
+      <!-- approved: membership != default -->
+      <div class="auth-notice approved hidden" id="notice-approved">
+        Access granted. &nbsp;<a href="assets.html" class="notice-link">→ Go to Asset Vault</a>
+      </div>
 
-        <div class="tos-section-block">
-          <h3>5. IP Address Policy</h3>
-          <p>TODO — Page 5 content.</p>
-          <p>Your IP address is recorded upon first verification and again on each subsequent login. If your IP address changes from the one recorded at registration, your account will be automatically suspended pending administrator review. This is a security measure to prevent unauthorized access.</p>
-          <p>Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae.</p>
-        </div>
+    </div>
 
-        <div class="tos-section-block">
-          <h3>6. Content &amp; Resources</h3>
-          <p>TODO — Page 6 content.</p>
-          <p>All assets and files hosted on this platform are the intellectual property of their respective creators. Redistribution, reproduction, or unauthorized sharing of any content is strictly prohibited and may result in immediate account termination.</p>
-          <p>Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat.</p>
-        </div>
+    <div class="scroll-hint" id="scroll-hint">
+      <div class="scroll-hint-line"></div>
+      <span>scroll</span>
+    </div>
+  </section>
 
-        <div class="tos-section-block">
-          <h3>7. Membership Tiers</h3>
-          <p>TODO — Page 7 content.</p>
-          <p>Access to resources is gated by your membership tier, assigned at administrator discretion. Default accounts have no resource access. Member, Trusted, Highly Trusted, and special tiers grant progressively broader access. Membership may be revoked at any time without notice.</p>
-          <p>Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum dolorem eum fugiat quo voluptas nulla pariatur.</p>
-        </div>
+  <!-- ── TOS SECTION ───────────────────────────────────────── -->
+  <section id="tos-section" class="tos-hidden">
 
-        <div class="tos-section-block">
-          <h3>8. Termination</h3>
-          <p>TODO — Page 8 content.</p>
-          <p>We reserve the right to suspend or permanently revoke access to any account at any time and for any reason, including but not limited to: violation of these terms, suspicious activity, or IP address discrepancies.</p>
-          <p>Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.</p>
-        </div>
+    <div class="tos-topbar" id="tos-topbar">
+      <div class="tos-topbar-left">
+        <button class="btn-back" onclick="closeTos()">← Back</button>
+        <span class="tos-heading">TERMS OF SERVICE</span>
+      </div>
+      <span class="tos-hint" id="tos-hint">↓ scroll to accept</span>
+    </div>
 
-        <div class="tos-section-block">
-          <h3>9. Liability</h3>
-          <p>TODO — Page 9 content.</p>
-          <p>This platform is provided as-is. We make no warranties, express or implied, regarding uptime, data integrity, or resource availability. By accessing this platform you agree to hold us harmless from any damages arising from your use.</p>
-          <p>Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus.</p>
-        </div>
+    <div class="tos-body">
 
-        <div class="tos-section-block tos-last-block">
-          <h3>10. Final Agreement</h3>
-          <p>TODO — Page 10 content. This is the final section.</p>
-          <p>By checking the box below, you confirm that you have read, understood, and agree to all of the above terms. You confirm that the Discord account you are linking is your own, and that you consent to the data collection described herein.</p>
-          <p>This agreement is effective immediately upon verification and remains in effect for the duration of your account's existence on this platform.</p>
-          <p class="tos-final-note">— NEXUS COLLECTIVE ADMIN TEAM</p>
-        </div>
+      <div class="tos-block">
+        <h3>1. Introduction</h3>
+        <p>TODO — Add your terms of service content here. This is page 1 of 10.</p>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
+      </div>
+      <div class="tos-block">
+        <h3>2. Eligibility &amp; Access</h3>
+        <p>TODO — Page 2 content.</p>
+        <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis.</p>
+      </div>
+      <div class="tos-block">
+        <h3>3. User Conduct</h3>
+        <p>TODO — Page 3 content.</p>
+        <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias.</p>
+      </div>
+      <div class="tos-block">
+        <h3>4. Data Collection</h3>
+        <p>TODO — Page 4 content.</p>
+        <p>By using this platform you acknowledge that we collect your Discord username, email, IP address, timezone, and related metadata for authentication and security.</p>
+      </div>
+      <div class="tos-block">
+        <h3>5. IP Address Policy</h3>
+        <p>TODO — Page 5 content.</p>
+        <p>Your IP is recorded on first verification and updated on every login. If your IP changes from the original, your account will be suspended pending admin review.</p>
+      </div>
+      <div class="tos-block">
+        <h3>6. Content &amp; Resources</h3>
+        <p>TODO — Page 6 content.</p>
+        <p>All files hosted here are the intellectual property of their respective creators. Redistribution, reproduction, or unauthorized sharing is strictly prohibited.</p>
+      </div>
+      <div class="tos-block">
+        <h3>7. Membership Tiers</h3>
+        <p>TODO — Page 7 content.</p>
+        <p>Access is gated by membership tier, assigned at admin discretion. Default accounts have no resource access. Membership may be revoked at any time without notice.</p>
+      </div>
+      <div class="tos-block">
+        <h3>8. Termination</h3>
+        <p>TODO — Page 8 content.</p>
+        <p>We reserve the right to suspend or permanently revoke access to any account at any time, including for IP discrepancies, violations, or suspicious activity.</p>
+      </div>
+      <div class="tos-block">
+        <h3>9. Liability</h3>
+        <p>TODO — Page 9 content.</p>
+        <p>This platform is provided as-is, with no warranties regarding uptime or data integrity. By accessing this platform you agree to hold us harmless from any damages.</p>
+      </div>
+      <div class="tos-block">
+        <h3>10. Final Agreement</h3>
+        <p>TODO — Page 10 content. This is the final section.</p>
+        <p>By checking below, you confirm you have read and agreed to all of the above. You confirm the Discord account you are linking is your own and consent to data collection.</p>
+        <p class="tos-sign">— NEXUS COLLECTIVE ADMIN TEAM</p>
+      </div>
 
-        <!-- ── ACCEPT BAR ─────────────────────────────────── -->
-        <div class="tos-accept-bar" id="tos-accept-bar">
-
-          <label class="check-label">
-            <span class="check-wrap">
-              <!-- Real input sits on top, invisible, fully clickable -->
-              <input
-                type="checkbox"
-                id="agree-check"
-                class="check-input"
-                disabled
-                onchange="onCheckChange(this)"
-              />
-              <!-- Visual box — pointer-events none so clicks reach the input -->
-              <span class="check-visual" aria-hidden="true">
-                <img src="assets/checkmark.svg" class="check-svg" alt="" />
-              </span>
+      <!-- accept bar -->
+      <div class="tos-accept" id="tos-accept">
+        <label class="tos-check-label">
+          <span class="tos-check-wrap">
+            <input type="checkbox" id="agree-check" class="tos-check-input" disabled onchange="onCheck(this)"/>
+            <span class="tos-check-box" aria-hidden="true">
+              <img src="assets/checkmark.svg" class="tos-check-svg" alt=""/>
             </span>
-            <span class="check-text">I have read and agree to the Terms of Service</span>
-          </label>
+          </span>
+          <span class="tos-check-text">I have read and agree to the Terms of Service</span>
+        </label>
+        <button class="btn-verify" id="btn-verify" disabled onclick="startDiscordAuth()">
+          Verify &amp; Continue →
+        </button>
+      </div>
 
-          <div class="btn-bevel-wrap">
-            <button class="btn-cube" id="tos-confirm-btn" disabled onclick="startDiscordAuth()">
-              Verify &amp; Continue
-            </button>
-          </div>
-
-        </div><!-- /tos-accept-bar -->
-
-      </div><!-- /tos-body -->
-
-    </section><!-- /tos-section -->
-
-  </div><!-- /page-wrapper -->
+    </div>
+  </section>
 
   <script src="js/main.js"></script>
 </body>

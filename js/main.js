@@ -1,189 +1,187 @@
-/* ═══════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════
    NEXUS COLLECTIVE — main.js
-   Handles: session restore, lock screen, ToS page-transform,
-   scroll-to-unlock, Discord OAuth redirect, logout.
-   ═══════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════ */
 
 'use strict';
 
-/* ─────────────────────────────────────────────────────────── */
-/*  INIT                                                       */
-/* ─────────────────────────────────────────────────────────── */
+/* ─── Cursor ───────────────────────────────────────────── */
+(function initCursor() {
+  const dot  = document.getElementById('cur-dot');
+  const ring = document.getElementById('cur-ring');
+  if (!dot || !ring) return;
+
+  let rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => {
+    dot.style.left  = e.clientX + 'px';
+    dot.style.top   = e.clientY + 'px';
+    // ring lags behind
+    rx += (e.clientX - rx) * 0.14;
+    ry += (e.clientY - ry) * 0.14;
+  }, { passive: true });
+
+  // Smoother ring using rAF
+  (function animRing() {
+    ring.style.left = rx + 'px';
+    ring.style.top  = ry + 'px';
+    requestAnimationFrame(animRing);
+  })();
+
+  document.querySelectorAll('a, button, label, input, [role="button"]').forEach(el => {
+    el.addEventListener('mouseenter', () => document.body.classList.add('hov'));
+    el.addEventListener('mouseleave', () => document.body.classList.remove('hov'));
+  });
+})();
+
+/* ─── Preloader ────────────────────────────────────────── */
+window.addEventListener('load', () => {
+  const pl = document.getElementById('preloader');
+  if (pl) {
+    setTimeout(() => pl.classList.add('done'), 250);
+  }
+});
+
+/* ─── Year ─────────────────────────────────────────────── */
+const yearEl = document.getElementById('year');
+if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+/* ─── Session check on page load ───────────────────────── */
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   setupScrollWatch();
 
-  /* Fast path: cached safe user data from sessionStorage      */
+  // Fast path from sessionStorage
   const cached = sessionStorage.getItem('nc_user');
   if (cached) {
     try {
-      const user = JSON.parse(cached);
-      if (user.locked) { showLockScreen(); return; }
-      showUser(user);
-    } catch { /* fall through to server check */ }
+      const u = JSON.parse(cached);
+      if (u.locked) { showLocked(); return; }
+      showUser(u);
+    } catch { /* fall through */ }
   }
 
-  /* Always verify with server — catches IP changes            */
+  // Always verify with server
   try {
     const res = await fetch('/api/me', { credentials: 'include' });
-    if (!res.ok) {
-      sessionStorage.removeItem('nc_user');
-      return; /* Not logged in — login UI already visible       */
-    }
+    if (!res.ok) { sessionStorage.removeItem('nc_user'); return; }
 
     const user = await res.json();
-
     if (user.locked) {
       sessionStorage.removeItem('nc_user');
-      showLockScreen();
+      showLocked();
       return;
     }
 
     sessionStorage.setItem('nc_user', JSON.stringify(user));
     showUser(user);
-
   } catch (err) {
-    console.warn('[nexus] Could not reach /api/me:', err.message);
+    console.warn('[nexus] /api/me unreachable:', err.message);
   }
 }
 
-/* ─────────────────────────────────────────────────────────── */
-/*  LOCK SCREEN                                                */
-/* ─────────────────────────────────────────────────────────── */
-function showLockScreen() {
-  /* Hide everything, show lock — expose zero user data        */
-  document.getElementById('page-wrapper').style.display = 'none';
-  document.getElementById('lock-screen').classList.remove('hidden');
+/* ─── Lock screen ──────────────────────────────────────── */
+function showLocked() {
+  // Full lock: hide everything, show lock screen
+  const main = document.getElementById('hero');
+  if (main) main.style.display = 'none';
+  document.getElementById('lock-screen')?.classList.remove('hidden');
 }
 
-/* ─────────────────────────────────────────────────────────── */
-/*  LOGGED-IN STATE                                            */
-/* ─────────────────────────────────────────────────────────── */
+/* ─── Show logged-in state ─────────────────────────────── */
 function showUser(user) {
-  document.getElementById('login-area').classList.add('hidden');
-  document.getElementById('welcome-area').classList.remove('hidden');
+  // Hide guest buttons
+  const guestBtns = document.getElementById('hero-btns-guest');
+  if (guestBtns) guestBtns.style.display = 'none';
 
-  const nav = document.getElementById('top-nav');
-  nav.classList.remove('hidden');
+  // Show nav user info
+  const navUser = document.getElementById('nav-user');
+  if (navUser) navUser.classList.remove('hidden');
 
-  document.getElementById('nav-username').textContent = user.username;
+  const uname = document.getElementById('nav-uname');
+  if (uname) uname.textContent = user.username;
 
-  const avatar = document.getElementById('nav-avatar');
-  if (user.avatar) {
-    avatar.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
-    avatar.alt = user.username;
-  } else {
-    /* Discord's default avatar is index-based off the user's ID */
-    const idx = Number(BigInt(user.id) >> 22n) % 6;
-    avatar.src = `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
-    avatar.alt = user.username;
+  // Set avatar
+  const img = document.getElementById('nav-avatar-img');
+  if (img) {
+    if (user.avatar) {
+      img.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
+      img.width  = 28;
+      img.height = 28;
+    }
+    // else keep default user icon
   }
+
+  // Show appropriate notice based on membership
+  // We only have locked check here; membership detail comes from Appwrite
+  // For now show pending (default state after first login)
+  const pending  = document.getElementById('notice-pending');
+  if (pending) pending.classList.remove('hidden');
 }
 
-/* ─────────────────────────────────────────────────────────── */
-/*  TOS PAGE TRANSFORM                                         */
-/*                                                             */
-/*  openTos(): adds .tos-open to <html>, which:               */
-/*    - enables vertical scroll on the page                    */
-/*    - fades/slides the hero section up via CSS transition    */
-/*    - reveals the ToS section below it                       */
-/*  The browser then scrolls to the top of the ToS section.   */
-/*                                                             */
-/*  closeTos(): reverses everything and scrolls back to top.   */
-/* ─────────────────────────────────────────────────────────── */
+/* ─── TOS page-transform ───────────────────────────────── */
 function openTos() {
-  /* Reset checkbox and button state every time                */
   const check = document.getElementById('agree-check');
-  check.checked  = false;
-  check.disabled = true;
-  document.getElementById('tos-confirm-btn').disabled = true;
+  if (check) { check.checked = false; check.disabled = true; }
+  const btn = document.getElementById('btn-verify');
+  if (btn) btn.disabled = true;
+  const hint = document.getElementById('tos-hint');
+  if (hint) { hint.textContent = '↓ scroll to accept'; hint.classList.remove('done'); }
 
-  const hint = document.getElementById('scroll-hint');
-  hint.textContent = '↓ Scroll to the bottom to accept';
-  hint.classList.remove('done');
-
-  /* Reveal ToS section (removes visibility:hidden)            */
-  document.getElementById('tos-section').classList.remove('tos-hidden');
-
-  /* Enable scrolling + trigger CSS transitions                */
+  document.getElementById('tos-section')?.classList.remove('tos-hidden');
   document.documentElement.classList.add('tos-open');
 
-  /* Scroll so the ToS topbar is flush with the viewport top  */
   requestAnimationFrame(() => {
-    const tosSection = document.getElementById('tos-section');
-    const y = tosSection.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top: y, behavior: 'smooth' });
+    const sec = document.getElementById('tos-section');
+    if (sec) {
+      const y = sec.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
   });
 }
 
 function closeTos() {
-  /* Scroll back to top first, then after a tick remove .tos-open */
   window.scrollTo({ top: 0, behavior: 'smooth' });
-
-  /* Wait for smooth scroll to mostly complete before hiding   */
   setTimeout(() => {
     document.documentElement.classList.remove('tos-open');
-    /* Re-hide the ToS section after the CSS transition        */
     setTimeout(() => {
-      document.getElementById('tos-section').classList.add('tos-hidden');
-    }, 500);
-  }, 350);
+      document.getElementById('tos-section')?.classList.add('tos-hidden');
+    }, 450);
+  }, 300);
 }
 
-/* ─────────────────────────────────────────────────────────── */
-/*  SCROLL DETECTION                                           */
-/*  Watches the window scroll position. When the user has      */
-/*  scrolled far enough that the ToS accept bar is visible,    */
-/*  the checkbox unlocks.                                      */
-/* ─────────────────────────────────────────────────────────── */
+/* ─── Scroll watch to unlock checkbox ─────────────────── */
 function setupScrollWatch() {
   let unlocked = false;
-
   window.addEventListener('scroll', () => {
     if (unlocked) return;
-
-    const acceptBar = document.getElementById('tos-accept-bar');
-    if (!acceptBar) return;
-
-    const rect = acceptBar.getBoundingClientRect();
-    /* Unlock when the top of the accept bar has entered the viewport */
-    if (rect.top < window.innerHeight - 40) {
+    const bar = document.getElementById('tos-accept');
+    if (!bar) return;
+    const rect = bar.getBoundingClientRect();
+    if (rect.top < window.innerHeight - 30) {
       unlocked = true;
-
       const check = document.getElementById('agree-check');
-      check.disabled = false;
-
-      const hint = document.getElementById('scroll-hint');
-      hint.textContent = '✓ You may now accept';
-      hint.classList.add('done');
+      if (check) check.disabled = false;
+      const hint = document.getElementById('tos-hint');
+      if (hint) { hint.textContent = '✓ you may now accept'; hint.classList.add('done'); }
     }
   }, { passive: true });
 }
 
-/* ─────────────────────────────────────────────────────────── */
-/*  CHECKBOX                                                   */
-/* ─────────────────────────────────────────────────────────── */
-function onCheckChange(checkbox) {
-  document.getElementById('tos-confirm-btn').disabled = !checkbox.checked;
+/* ─── Checkbox ─────────────────────────────────────────── */
+function onCheck(checkbox) {
+  const btn = document.getElementById('btn-verify');
+  if (btn) btn.disabled = !checkbox.checked;
 }
 
-/* ─────────────────────────────────────────────────────────── */
-/*  DISCORD AUTH REDIRECT                                      */
-/*  Server-side route builds the real OAuth URL so client_id  */
-/*  and client_secret never touch the frontend.               */
-/* ─────────────────────────────────────────────────────────── */
+/* ─── Discord auth ─────────────────────────────────────── */
 function startDiscordAuth() {
   window.location.href = '/api/auth-redirect';
 }
 
-/* ─────────────────────────────────────────────────────────── */
-/*  LOGOUT                                                     */
-/* ─────────────────────────────────────────────────────────── */
+/* ─── Logout ───────────────────────────────────────────── */
 async function logout() {
   sessionStorage.removeItem('nc_user');
-  try {
-    await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-  } catch { /* best effort */ }
+  try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch {}
   window.location.reload();
 }
