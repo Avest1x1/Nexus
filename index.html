@@ -11,46 +11,34 @@
 </head>
 <body>
 
-  <!-- cursor -->
   <div id="cur-dot"></div>
   <div id="cur-ring"></div>
-
-  <!-- particles canvas — sits behind everything -->
   <canvas id="bg-canvas"></canvas>
-
   <div id="preloader"><div class="pre-ring"></div></div>
 
-  <!-- ══════════════════════════════════════════════════
-       LOCKED OVERLAY — covers entire screen, always on top
-       JS redirects here from any page if locked=true
-       ══════════════════════════════════════════════════ -->
+  <!-- ── LOCK OVERLAY ─────────────────────────────────── -->
   <div id="lock-overlay" class="hidden">
     <div class="lock-blur"></div>
     <div class="lock-card">
       <div class="lock-card-top">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
           <rect x="3" y="11" width="18" height="11" rx="2"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
         <span class="lock-label">ACCOUNT LOCKED</span>
       </div>
-      <p class="lock-msg">
-        A new IP address was detected on your account.<br/>
-        For security, access has been suspended.
-      </p>
+      <p class="lock-msg">An IP address change was detected. Access has been suspended for security.</p>
       <div class="lock-divider"></div>
       <p class="lock-contact">
-        Contact a Nexus admin in the
+        Contact a Nexus admin via the
         <a href="https://discord.gg/sHsGnyfbu5" target="_blank" rel="noopener" class="lock-link">Discord server</a>
-        to appeal and restore access.
+        to appeal.
       </p>
       <div class="lock-id" id="lock-uid"></div>
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════
-       NAV
-       ══════════════════════════════════════════════════ -->
+  <!-- ── NAV ──────────────────────────────────────────── -->
   <nav class="site-nav">
     <a href="/" class="nav-logo">
       <div class="nav-logo-dot"></div>
@@ -58,8 +46,8 @@
     </a>
     <div class="nav-right">
       <div class="nav-user hidden" id="nav-user">
-        <div class="nav-avatar" id="nav-avatar-wrap">
-          <img id="nav-avatar-img" class="default-icon" src="assets/user.svg" alt="user" width="14" height="14"/>
+        <div class="nav-avatar">
+          <img id="nav-avatar-img" src="assets/user.svg" alt="user" width="14" height="14"/>
         </div>
         <span class="nav-username" id="nav-uname"></span>
         <span class="nav-role-badge hidden" id="nav-role"></span>
@@ -68,136 +56,143 @@
     </div>
   </nav>
 
-  <!-- ══════════════════════════════════════════════════
-       HERO
-       ══════════════════════════════════════════════════ -->
+  <!-- ── HERO ─────────────────────────────────────────── -->
   <section id="hero">
-    <div class="hero-inner">
+    <div class="hero-inner" id="hero-inner">
 
-      <div class="hero-eyebrow">private resource server</div>
-      <h1 class="hero-title">NEXUS</h1>
+      <p class="hero-eyebrow">private resource server</p>
+      <h1 class="hero-title" data-text="NEXUS">NEXUS</h1>
       <span class="hero-subtitle">COLLECTIVE</span>
+      <p class="hero-tagline">a private modding server made for genuine developers</p>
 
-      <div class="roblox-tag">
-        <div class="roblox-tag-dot"></div>
-        Roblox &amp; Luau · Asymmetric Horror · Private Vault
-      </div>
-
-      <p class="hero-desc">
-        A gated community for developers building asymmetric horror and survival experiences.
-        Resources shared here don't leave here. Entry requires application via Lymeware.
-      </p>
-
-      <!-- GUEST state -->
-      <div id="state-guest">
+      <!-- GUEST -->
+      <div id="state-guest" class="hero-actions">
         <button class="btn-discord" onclick="openTos()">
           <img src="assets/discord.svg" alt="Discord" width="18" height="14"/>
           Login with Discord
         </button>
       </div>
 
-      <!-- PENDING state: logged in, membership=default -->
-      <div class="auth-notice pending hidden" id="state-pending">
-        <div class="notice-icon">⏳</div>
-        <div>
-          <strong>PENDING APPROVAL</strong>
-          Your account is registered and logged. A Nexus admin will review and assign your role.
-          You'll be notified via Discord. Sit tight.
+      <!-- PENDING -->
+      <div id="state-pending" class="pending-card hidden">
+        <div class="pending-card-row">
+          <div class="pending-dot"></div>
+          <span class="pending-title">PENDING APPROVAL</span>
+        </div>
+        <p class="pending-body">
+          Your account has been registered and logged. A Nexus admin will review your profile
+          and assign your access tier. This is a manual process — you'll be notified via Discord
+          once approved. Nothing to do on your end.
+        </p>
+        <div class="pending-footer">
+          <a href="https://discord.gg/sHsGnyfbu5" target="_blank" rel="noopener" class="pending-link">
+            Join the Discord to follow up
+          </a>
         </div>
       </div>
 
-      <!-- APPROVED state: membership != default -->
-      <div class="auth-notice approved hidden" id="state-approved">
-        <div class="notice-icon">✓</div>
-        <div>
-          Access granted. Welcome to the vault.
-          <a href="assets.html" class="notice-link">→ Open Asset Vault</a>
-        </div>
+      <!-- APPROVED -->
+      <div id="state-approved" class="approved-notice hidden">
+        Access granted.
+        <a href="assets.html" class="notice-link">Open Asset Vault</a>
       </div>
 
     </div>
 
-    <div class="scroll-hint" id="scroll-hint">
+    <!-- About card below hero buttons -->
+    <div class="hero-about-card" id="hero-about-card">
+      <div class="hac-col">
+        <div class="hac-label">FOCUS</div>
+        <div class="hac-val">Asymmetric horror, survival games, game modification &amp; Luau development</div>
+      </div>
+      <div class="hac-divider"></div>
+      <div class="hac-col">
+        <div class="hac-label">ENTRY</div>
+        <div class="hac-val">Application via Lymeware Industries only — not open to the public</div>
+      </div>
+      <div class="hac-divider"></div>
+      <div class="hac-col">
+        <div class="hac-label">FILES</div>
+        <div class="hac-val">Gated by tier. Everything is logged. Nothing leaves without consequences</div>
+      </div>
+    </div>
+
+    <div class="scroll-hint">
       <div class="scroll-hint-line"></div>
       <span>scroll</span>
     </div>
   </section>
 
-  <!-- ══════════════════════════════════════════════════
-       ABOUT SECTION
-       ══════════════════════════════════════════════════ -->
+  <!-- ── ABOUT SECTION ────────────────────────────────── -->
   <section id="about">
     <div class="about-inner">
       <div class="section-label">// about nexus collective</div>
       <div class="about-grid">
 
         <div class="about-card reveal">
-          <span class="card-icon">🔐</span>
           <div class="card-title">What Is This</div>
           <div class="card-body">
-            Nexus Collective is the <span class="accent">private modding division</span> of Lymeware Industries.
-            Scripts, systems, decompiled assets, and tools — shared between vetted members only.
+            Nexus Collective is the <span class="hl">private modding division</span> of Lymeware Industries.
+            Scripts, decompiled assets, system modules — shared between vetted members only.
             Nothing here is public. Every download is gated. Every file is yours until you make it not.
           </div>
         </div>
 
         <div class="about-card reveal">
-          <span class="card-icon">🎮</span>
-          <div class="card-title">Focus</div>
+          <div class="card-title">Services</div>
           <div class="card-body">
-            Centered on <span class="accent">asymmetric horror, survival games, and game modification</span>.
-            Rescripting services, modded assets, leaked resource libraries.
+            Free rescripting service for game clients up to ~900 lines per script.
+            Extensive library of <span class="hl">game resources, modded assets, and tools</span>.
+            Active community of experienced modders contributing regularly.
             <div class="pill-list">
               <span class="pill">Asymmetric Horror</span>
-              <span class="pill">Survival Games</span>
               <span class="pill">Game Modding</span>
               <span class="pill">Luau / Roblox</span>
+              <span class="pill">Systems Design</span>
             </div>
           </div>
         </div>
 
         <div class="about-card reveal">
-          <span class="card-icon">⌨️</span>
-          <div class="card-title">Services</div>
+          <div class="card-title">Asset Protection</div>
           <div class="card-body">
-            Free rescripting service for game clients up to ~900 lines per script.
-            Extensive library of <span class="accent">game resources, modded assets, and tools</span>.
-            Active community of experienced modders contributing regularly.
+            Your files won't be redistributed without explicit permission.
+            Violators are permanently banned. <span class="hl">You will be compensated</span> — voided only
+            if the leak originates from your own actions. We take this seriously.
           </div>
         </div>
 
         <div class="about-card reveal">
-          <span class="card-icon">🛡️</span>
-          <div class="card-title">Asset Protection</div>
+          <div class="card-title">Language</div>
           <div class="card-body">
-            Your files won't be redistributed without explicit permission.
-            Violators are banned. <span class="accent">You will be compensated</span> by us — voided only if the leak originates from your own actions.
+            Primarily a <span class="hl">Roblox / Luau server</span>. Resources are written targeting
+            the Roblox engine. TypeScript tooling may appear. Developers from all platforms are welcome
+            in Lymeware — but Nexus is Luau-first.
           </div>
         </div>
 
         <div class="about-card full reveal">
-          <span class="card-icon">🏷️</span>
           <div class="card-title">Access Tiers</div>
           <div class="tiers-grid">
             <div class="tier">
-              <div class="tier-name pending-color">Pending</div>
-              <div class="tier-desc">Registered but awaiting admin approval. No resource access.</div>
+              <div class="tier-name" style="color:var(--muted)">Pending</div>
+              <div class="tier-desc">Registered, awaiting admin review. No resource access.</div>
             </div>
             <div class="tier">
-              <div class="tier-name member-color">Member</div>
-              <div class="tier-desc">Approved member. Community assets and general utility scripts.</div>
+              <div class="tier-name" style="color:var(--green)">Member</div>
+              <div class="tier-desc">Approved. Community assets and general utility scripts.</div>
             </div>
             <div class="tier">
-              <div class="tier-name trusted-color">Trusted</div>
-              <div class="tier-desc">Vetted member. Broader access including system modules and community drops.</div>
+              <div class="tier-name" style="color:var(--blue)">Trusted</div>
+              <div class="tier-desc">Community drops, system modules, broader access.</div>
             </div>
             <div class="tier">
-              <div class="tier-name htrusted-color">Highly Trusted</div>
-              <div class="tier-desc">Engine-level resources, advanced modded assets, official files.</div>
+              <div class="tier-name" style="color:var(--gold)">Highly Trusted</div>
+              <div class="tier-desc">Engine-level resources and official files.</div>
             </div>
             <div class="tier">
-              <div class="tier-name mommy-color">Mommy's Favorite</div>
-              <div class="tier-desc">Full vault access including private files. Manually assigned. No request path.</div>
+              <div class="tier-name" style="color:var(--accent)">Mommy's Favorite</div>
+              <div class="tier-desc">Full vault including private files. Manually assigned.</div>
             </div>
           </div>
         </div>
@@ -206,66 +201,46 @@
 
       <div class="entry-info reveal">
         <strong>ENTRY</strong> &mdash;
-        This server is not open to the public. Entry requires applying through
-        <a href="https://discord.gg/sHsGnyfbu5" target="_blank" rel="noopener" class="accent-link">Lymeware Industries</a>.
-        Logging in registers your account. Access is granted manually by an admin.
-        Do not expect instant approval.
+        Not open to the public. Apply through
+        <a href="https://discord.gg/sHsGnyfbu5" target="_blank" rel="noopener" class="hl-link">Lymeware Industries</a>.
+        Logging in registers you. Access is assigned manually by an admin. Do not expect instant approval.
       </div>
     </div>
   </section>
 
-  <!-- ══════════════════════════════════════════════════
-       TOS SECTION — page transform
-       ══════════════════════════════════════════════════ -->
+  <!-- ── TOS SECTION ──────────────────────────────────── -->
   <section id="tos-section" class="tos-hidden">
-
     <div class="tos-topbar">
       <div class="tos-topbar-left">
-        <button class="btn-back" onclick="closeTos()">← Back</button>
+        <button class="btn-back" onclick="closeTos()">Back</button>
         <span class="tos-heading">NEXUS COLLECTIVE — TERMS OF SERVICE &amp; USER AGREEMENT</span>
       </div>
-      <span class="tos-hint" id="tos-hint">↓ scroll to accept</span>
+      <span class="tos-hint" id="tos-hint">scroll to accept</span>
     </div>
 
     <div class="tos-body">
-
       <div class="tos-preamble">
         This agreement is between you ("User", "Member") and Nexus Collective ("we", "us", "the Platform"),
         operated under Lymeware Industries. By authenticating with Discord and proceeding past this page,
-        you acknowledge that you have read, understood, and irrevocably agree to every clause contained herein.
+        you acknowledge that you have read, understood, and irrevocably agree to every clause herein.
         If you do not agree, close this page and do not proceed.
       </div>
 
       <div class="tos-block">
-        <div class="tos-block-num">01</div>
-        <div class="tos-block-content">
+        <div class="tos-num">01</div>
+        <div class="tos-content">
           <h3>Nature of the Platform &amp; Scope of Agreement</h3>
-          <p>
-            Nexus Collective is a <strong>private, invite-only</strong> resource-sharing platform exclusively accessible
-            to vetted members of the Lymeware Industries community. The platform distributes game modification assets,
-            decompiled scripts, system modules, and related development resources ("Assets") among registered members.
-          </p>
-          <p>
-            This Agreement governs all access to, use of, and conduct within the platform. It applies retroactively
-            to all content you have received, downloaded, or used from this platform regardless of when access was granted.
-            Membership is a privilege, not a right, and may be revoked at any time for any reason at administrator discretion.
-          </p>
-          <p>
-            Entry to Nexus Collective is exclusively via Lymeware Industries. Attempting to access the platform through
-            other means, sharing invitation links, or circumventing the application process constitutes an immediate and
-            permanent ban with no right to appeal.
-          </p>
+          <p>Nexus Collective is a <strong>private, invite-only</strong> resource-sharing platform exclusively accessible to vetted members of the Lymeware Industries community. The platform distributes game modification assets, decompiled scripts, system modules, and related development resources among registered members.</p>
+          <p>This Agreement governs all access to, use of, and conduct within the platform. It applies retroactively to all content you have received, downloaded, or used from this platform regardless of when access was granted. Membership is a privilege, not a right, and may be revoked at any time at administrator discretion.</p>
+          <p>Entry to Nexus Collective is exclusively via Lymeware Industries. Attempting to access the platform through other means, sharing invitation links, or circumventing the application process constitutes an immediate and permanent ban with no right of appeal.</p>
         </div>
       </div>
 
       <div class="tos-block">
-        <div class="tos-block-num">02</div>
-        <div class="tos-block-content">
+        <div class="tos-num">02</div>
+        <div class="tos-content">
           <h3>Data Collection, IP Logging &amp; Consent</h3>
-          <p>
-            By proceeding with Discord authentication, you <strong>expressly and irrevocably consent</strong> to the
-            collection, storage, and processing of the following personal data:
-          </p>
+          <p>By proceeding with Discord authentication, you <strong>expressly and irrevocably consent</strong> to the collection, storage, and processing of the following personal data:</p>
           <ul class="tos-list">
             <li>Your Discord username, user ID, and associated email address</li>
             <li>Your public IP address, recorded at the time of first registration</li>
@@ -274,264 +249,152 @@
             <li>Your phone number if provided to and shared by Discord's OAuth API</li>
             <li>Timestamps of all login events, session durations, and access logs</li>
           </ul>
-          <p>
-            IP address data is used for <strong>security verification and identity continuity</strong>. If your IP address
-            changes from the value recorded at registration, your account will be automatically suspended pending
-            administrator review. This is a non-negotiable security measure. There are no exceptions.
-          </p>
-          <p>
-            This data is never sold, shared with third parties, or used for advertising. It is retained for security,
-            dispute resolution, and legal compliance purposes for as long as your account exists, and for a minimum of
-            24 months following account termination.
-          </p>
-          <p class="tos-notice">
-            ⚠ Note regarding phone numbers: Discord's OAuth2 API does not expose phone numbers by default regardless
-            of scope. If your number was not recorded, this is expected behavior from Discord, not a platform error.
-          </p>
+          <p>IP address data is used for <strong>security verification and identity continuity</strong>. If your IP changes from the value recorded at registration, your account will be automatically suspended pending administrator review. This is non-negotiable. There are no exceptions.</p>
+          <p>This data is never sold, shared with third parties, or used for advertising. It is retained for security, dispute resolution, and legal compliance for as long as your account exists, and for a minimum of 24 months following account termination.</p>
+          <p class="tos-notice">Note: Discord's OAuth2 API does not expose phone numbers by default regardless of scope. If your number was not recorded this is expected behavior from Discord, not a platform error.</p>
         </div>
       </div>
 
       <div class="tos-block">
-        <div class="tos-block-num">03</div>
-        <div class="tos-block-content">
+        <div class="tos-num">03</div>
+        <div class="tos-content">
           <h3>Asset Usage, Distribution &amp; Restrictions</h3>
-          <p>
-            All Assets distributed through this platform are provided under strict, non-transferable,
-            personal-use licenses. Unless explicitly stated otherwise in writing by an authorized administrator,
-            the following rules apply to every file, script, module, archive, or resource you receive here:
-          </p>
+          <p>All Assets distributed through this platform are provided under strict, non-transferable, personal-use licenses. Unless explicitly stated otherwise in writing by an authorized administrator, the following rules apply to every file, script, module, archive, or resource you receive here:</p>
           <ul class="tos-list">
             <li>Assets are for your <strong>personal development use only</strong></li>
             <li>Assets may not be redistributed, re-uploaded, or re-shared in any form</li>
             <li>Assets may not be sold, licensed, or used as the basis for commercial products without written authorization</li>
-            <li>Assets may not be posted in public repositories, Discord servers, forums, or any other public-facing channel</li>
-            <li>Modifications to assets do not grant redistribution rights — a modified leak is still a leak</li>
-            <li>You may not share file contents, screenshots of code, or functional descriptions in ways that replicate the asset</li>
+            <li>Assets may not be posted in public repositories, Discord servers, forums, or any public-facing channel</li>
+            <li>A modified leak is still a leak — modifications do not grant redistribution rights</li>
+            <li>You may not share file contents, screenshots of code, or functional descriptions that replicate the asset</li>
           </ul>
-          <p>
-            The Nexus Collective asset library includes materials originating from third-party games and applications.
-            You acknowledge that some assets may be subject to additional intellectual property constraints and agree
-            to exercise appropriate discretion in their use.
-          </p>
         </div>
       </div>
 
-      <div class="tos-block tos-block-danger">
-        <div class="tos-block-num danger">04</div>
-        <div class="tos-block-content">
+      <div class="tos-block tos-danger">
+        <div class="tos-num danger">04</div>
+        <div class="tos-content">
           <h3>Leaking, Unauthorized Sharing &amp; Legal Consequences</h3>
-          <p>
-            This section carries the most serious consequences of any clause in this agreement. Read it carefully.
-          </p>
-          <p>
-            If you leak, share, redistribute, sell, or in any way cause the unauthorized circulation of any Asset
-            obtained through this platform — regardless of whether it was your direct intent, whether it was a
-            "small" file, or whether you believe the asset to be freely available elsewhere — the following will occur:
-          </p>
+          <p>This section carries the most serious consequences of any clause in this agreement. Read it carefully.</p>
+          <p>If you leak, share, redistribute, sell, or in any way cause the unauthorized circulation of any Asset obtained through this platform — regardless of intent, file size, or whether you believe the asset is freely available elsewhere — the following will occur:</p>
           <ul class="tos-list danger-list">
-            <li>
-              <strong>You will be contacted directly.</strong> We will locate your Discord account, and a Nexus admin
-              will personally and privately reach out to you with documented evidence of the leak.
-            </li>
-            <li>
-              <strong>You will be required to remediate.</strong> You must provide a full list of every person,
-              server, or platform you shared the asset with. You must contact each of them and secure deletion
-              of all copies. You will have 48 hours to demonstrate compliance.
-            </li>
-            <li>
-              <strong>Failure to comply escalates to legal action.</strong> We reserve the right to pursue civil
-              claims for damages, issue formal DMCA takedown notices, and share your logged data (IP address,
-              Discord ID, email) with affected parties and legal counsel as required by law.
-            </li>
-            <li>
-              <strong>Your account is permanently banned</strong> with no right of appeal, effective immediately
-              upon confirmed detection of a leak.
-            </li>
+            <li><strong>You will be contacted directly.</strong> We will locate your Discord account and a Nexus admin will personally reach out with documented evidence of the leak.</li>
+            <li><strong>You will be required to remediate.</strong> You must provide a full list of every person, server, or platform you shared the asset with and secure deletion of all copies within 48 hours.</li>
+            <li><strong>Failure to comply escalates to legal action.</strong> We reserve the right to pursue civil claims, issue DMCA takedowns, and share your logged data with affected parties and legal counsel as required.</li>
+            <li><strong>Your account is permanently banned</strong> effective immediately upon confirmed detection, with no right of appeal.</li>
           </ul>
-          <p>
-            We are not bluffing. We log everything. We have your IP. We have your Discord ID. We have your email.
-            The moment you agreed to this ToS, you accepted that these consequences apply to you personally.
-          </p>
-          <p class="tos-notice danger-notice">
-            ⚠ The above applies even if you are no longer a member at the time of discovery. This agreement
-            survives account termination indefinitely.
-          </p>
+          <p class="tos-notice danger-notice">This agreement survives account termination indefinitely. The above applies even if you are no longer a member at the time of discovery.</p>
         </div>
       </div>
 
       <div class="tos-block">
-        <div class="tos-block-num">05</div>
-        <div class="tos-block-content">
+        <div class="tos-num">05</div>
+        <div class="tos-content">
           <h3>Membership Tiers, Access Control &amp; Approval Process</h3>
-          <p>
-            All accounts begin in a <strong>Pending</strong> state upon first login. Pending accounts are registered
-            and logged, but have no access to any assets, files, or gated content. This is not a locked state —
-            you can use the platform freely — but resource access is not granted until an admin manually assigns
-            your membership tier.
-          </p>
-          <p>
-            Membership tiers and their access levels are as follows:
-          </p>
+          <p>All accounts begin in a <strong>Pending</strong> state upon first login. Pending accounts are registered and logged, but have no access to any assets or gated content. Access is not granted until an admin manually assigns your membership tier.</p>
           <ul class="tos-list">
             <li><strong>Pending</strong> — Registered, awaiting approval. No resource access.</li>
-            <li><strong>Member</strong> — Approved. Access to community assets and general utility resources.</li>
+            <li><strong>Member</strong> — Approved. Community assets and general utility resources.</li>
             <li><strong>Trusted</strong> — Vetted member. Broader access including community drops and system modules.</li>
             <li><strong>Highly Trusted</strong> — Engine-level and advanced resources. Official files included.</li>
-            <li><strong>Mommy's Favorite</strong> — Full vault access including private and unreleased assets. No request path exists for this tier.</li>
+            <li><strong>Mommy's Favorite</strong> — Full vault access including private and unreleased assets. No request path.</li>
           </ul>
-          <p>
-            Tier assignments are made entirely at administrator discretion. There is no formal request process.
-            Demonstrating value to the community, contributing assets, and being a reliable member are the only
-            paths to advancement.
-          </p>
+          <p>Tier assignments are made entirely at administrator discretion. There is no formal request process. Contributing to the community is the only reliable path to advancement.</p>
         </div>
       </div>
 
       <div class="tos-block">
-        <div class="tos-block-num">06</div>
-        <div class="tos-block-content">
+        <div class="tos-num">06</div>
+        <div class="tos-content">
           <h3>Account Security, IP Verification &amp; Lockouts</h3>
-          <p>
-            Your account is tied to the IP address recorded at registration. This is version 1 of your identity
-            record ("original_ip") and it does not change. On every login, your current IP is compared against
-            this record.
-          </p>
-          <p>
-            If a discrepancy is detected, the following occurs automatically and without prior warning:
-          </p>
+          <p>Your account is tied to the IP address recorded at registration. On every login, your current IP is compared against this record. If a discrepancy is detected the following occurs automatically and without prior warning:</p>
           <ul class="tos-list">
             <li>Your account is immediately locked</li>
-            <li>You are redirected to a locked state page and cannot access any other part of the platform</li>
+            <li>You are shown a locked state and cannot access any other part of the platform</li>
             <li>The new IP is logged as evidence</li>
             <li>An admin must manually review and unlock your account</li>
           </ul>
-          <p>
-            To appeal a lockout, join the Lymeware Discord server and open an admin ticket. Be prepared to
-            verify your identity. Lockouts caused by VPN use, network changes, or travel are handled
-            case-by-case. There are no automatic unlocks.
-          </p>
-          <p>
-            You are responsible for your account security. Do not share your Discord login with anyone.
-            Account compromise does not exempt you from the consequences of any actions taken under your account.
-          </p>
+          <p>To appeal, join the Lymeware Discord and open an admin ticket. Lockouts caused by VPN use, network changes, or travel are handled case-by-case. There are no automatic unlocks.</p>
         </div>
       </div>
 
       <div class="tos-block">
-        <div class="tos-block-num">07</div>
-        <div class="tos-block-content">
+        <div class="tos-num">07</div>
+        <div class="tos-content">
           <h3>Administrator Rights &amp; Oversight</h3>
-          <p>
-            Administrators of Nexus Collective hold elevated privileges for the purpose of platform security
-            and member management. Administrator actions include but are not limited to:
-          </p>
+          <p>Administrators hold elevated privileges for platform security and member management. Administrator actions include:</p>
           <ul class="tos-list">
             <li>Viewing member profiles including IP address records for security verification</li>
             <li>Approving, modifying, or revoking membership tier assignments</li>
             <li>Locking or permanently banning accounts</li>
-            <li>Investigating suspected leaks or policy violations</li>
             <li>Accessing session and login logs for any account</li>
           </ul>
-          <p>
-            Administrator accounts are subject to reduced data collection: IP addresses are not logged for
-            admin accounts. Timezone data is still recorded for session management.
-          </p>
-          <p>
-            Administrators operate under a separate internal conduct policy. Abuse of administrator privileges,
-            including unauthorized data access, is grounds for immediate removal and potential legal action.
-          </p>
+          <p>Administrator accounts are subject to reduced data collection: IP addresses are not logged for admin accounts. Timezone data is still recorded for session management.</p>
         </div>
       </div>
 
       <div class="tos-block">
-        <div class="tos-block-num">08</div>
-        <div class="tos-block-content">
+        <div class="tos-num">08</div>
+        <div class="tos-content">
           <h3>Content Standards &amp; Community Conduct</h3>
-          <p>
-            Members are expected to conduct themselves professionally within all Nexus Collective spaces,
-            including this platform and the associated Discord server. The following are grounds for immediate
-            removal with no appeal:
-          </p>
+          <p>The following are grounds for immediate removal with no appeal:</p>
           <ul class="tos-list">
             <li>Harassment, threats, or targeted abuse of any member or administrator</li>
-            <li>Attempting to circumvent access controls, probe the platform for vulnerabilities, or extract data</li>
+            <li>Attempting to circumvent access controls or probe the platform for vulnerabilities</li>
             <li>Impersonating administrators, staff, or other members</li>
-            <li>Sharing referral or invitation links publicly or to unapproved individuals</li>
-            <li>Using assets obtained here in ways that directly harm the creators of those assets</li>
+            <li>Sharing invitation links publicly or to unapproved individuals</li>
+            <li>Selling leaked or redistributed material through the marketplace</li>
           </ul>
-          <p>
-            Nexus Collective maintains an open marketplace for trusted members to sell their original work.
-            Assets sold through the marketplace must be your original work or properly licensed.
-            Selling leaked or redistributed material through the marketplace is a severe violation of this agreement.
-          </p>
         </div>
       </div>
 
       <div class="tos-block">
-        <div class="tos-block-num">09</div>
-        <div class="tos-block-content">
+        <div class="tos-num">09</div>
+        <div class="tos-content">
           <h3>Termination, Suspension &amp; Consequences</h3>
-          <p>
-            Your access may be terminated or suspended at any time, with or without notice, for any reason
-            including but not limited to violation of this agreement, inactivity, or administrator discretion.
-          </p>
-          <p>
-            Upon termination:
-          </p>
+          <p>Your access may be terminated or suspended at any time, with or without notice, for any reason. Upon termination:</p>
           <ul class="tos-list">
             <li>Your access to all resources is immediately and permanently revoked</li>
             <li>Your data is retained for a minimum of 24 months for security and legal purposes</li>
-            <li>Your obligations under Sections 03 and 04 of this agreement survive termination indefinitely</li>
-            <li>Assets you obtained prior to termination remain subject to all usage restrictions</li>
+            <li>Your obligations under Sections 03 and 04 survive termination indefinitely</li>
+            <li>Assets obtained prior to termination remain subject to all usage restrictions</li>
           </ul>
-          <p>
-            Termination does not release you from liability for actions taken while a member.
-            We reserve the right to pursue legal remedies against former members for violations discovered
-            after account termination.
-          </p>
+          <p>Termination does not release you from liability for actions taken while a member.</p>
         </div>
       </div>
 
       <div class="tos-block">
-        <div class="tos-block-num">10</div>
-        <div class="tos-block-content">
+        <div class="tos-num">10</div>
+        <div class="tos-content">
           <h3>Final Agreement &amp; Binding Consent</h3>
-          <p>
-            By checking the box below and clicking Verify &amp; Continue, you acknowledge and agree to the following:
-          </p>
+          <p>By checking the box below and clicking Verify &amp; Continue, you acknowledge that:</p>
           <ul class="tos-list">
             <li>You have read this agreement in its entirety and understand all of its terms</li>
-            <li>You consent to the collection and storage of your IP address, email, Discord ID, timezone, and session data</li>
-            <li>You understand that leaking assets will result in direct contact, required remediation, and potential legal action</li>
+            <li>You consent to collection and storage of your IP address, email, Discord ID, timezone, and session data</li>
+            <li>You understand leaking assets will result in direct contact, required remediation, and potential legal action</li>
             <li>You accept that your account may be locked, suspended, or terminated at any time</li>
-            <li>You agree that this agreement survives account termination and applies retroactively</li>
-            <li>You confirm the Discord account you are linking belongs to you and you are the sole authorized user</li>
+            <li>You agree this agreement survives account termination and applies retroactively</li>
+            <li>You confirm the Discord account you are linking belongs solely to you</li>
           </ul>
-          <p>
-            This agreement constitutes a legally binding contract between you and Nexus Collective / Lymeware Industries
-            to the fullest extent permitted by applicable law. If any provision is found unenforceable, the remaining
-            provisions continue in full force.
-          </p>
-          <p class="tos-sign">— NEXUS COLLECTIVE ADMIN TEAM<br/><span style="opacity:0.45;font-size:11px;">Lymeware Industries · Private Division · nexuscollective.vercel.app</span></p>
+          <p>This constitutes a legally binding contract between you and Nexus Collective / Lymeware Industries to the fullest extent permitted by applicable law.</p>
+          <p class="tos-sign">— NEXUS COLLECTIVE ADMIN TEAM<br/><span class="tos-sign-sub">Lymeware Industries · Private Division</span></p>
         </div>
       </div>
 
-      <!-- Accept bar -->
       <div class="tos-accept" id="tos-accept">
         <label class="tos-check-label">
           <span class="tos-check-wrap">
             <input type="checkbox" id="agree-check" class="tos-check-input" disabled onchange="onCheck(this)"/>
-            <span class="tos-check-box" aria-hidden="true">
+            <span class="tos-check-box">
               <img src="assets/checkmark.svg" class="tos-check-svg" alt=""/>
             </span>
           </span>
           <span class="tos-check-text">I have read and agree to the full Terms of Service &amp; User Agreement</span>
         </label>
         <button class="btn-verify" id="btn-verify" disabled onclick="startDiscordAuth()">
-          Verify &amp; Continue →
+          Verify &amp; Continue
         </button>
       </div>
-
     </div>
   </section>
 

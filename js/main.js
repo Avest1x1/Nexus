@@ -2,7 +2,25 @@
 'use strict';
 
 /* ====================================================
-   CURSOR
+   ENTRY ANIMATION
+   Add class on body immediately, remove after tiny delay
+   so CSS transition fires on load.
+   ==================================================== */
+document.documentElement.style.visibility = 'hidden';
+document.body.classList.add('page-enter');
+
+window.addEventListener('load', function() {
+  document.documentElement.style.visibility = '';
+  // One frame delay so the browser paints the initial state
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      document.body.classList.remove('page-enter');
+    });
+  });
+});
+
+/* ====================================================
+   CURSOR — lerp runs every frame, mouse target stored
    ==================================================== */
 var _mx = 0, _my = 0;
 var _rx = 0, _ry = 0;
@@ -21,147 +39,172 @@ var _onUI = false;
   }, { passive: true });
 
   (function loop() {
-    _rx += (_mx - _rx) * 0.12;
-    _ry += (_my - _ry) * 0.12;
+    _rx += (_mx - _rx) * 0.11;
+    _ry += (_my - _ry) * 0.11;
     ring.style.left = _rx + 'px';
     ring.style.top  = _ry + 'px';
     requestAnimationFrame(loop);
   })();
 
-  document.querySelectorAll('a, button, label, input, .about-card, .tier, .pill').forEach(function(el) {
-    el.addEventListener('mouseenter', function() { document.body.classList.add('hov'); _onUI = true; });
+  document.querySelectorAll('a, button, label, input').forEach(function(el) {
+    el.addEventListener('mouseenter', function() { document.body.classList.add('hov'); _onUI = true;  });
     el.addEventListener('mouseleave', function() { document.body.classList.remove('hov'); _onUI = false; });
   });
 })();
 
 /* ====================================================
-   PARTICLES — custom canvas system
-   Lines connect nearby particles.
-   Cursor REPELS particles when near.
-   Clicking the background SPAWNS new particles.
+   PARTICLES — lightweight, throttled to ~30fps
+   - Fixed pool, no dynamic allocation in the hot path
+   - Canvas only redraws when needed
+   - Click spawns temporary burst particles that decay
    ==================================================== */
 (function initParticles() {
   var canvas = document.getElementById('bg-canvas');
   if (!canvas) return;
   var ctx = canvas.getContext('2d');
 
-  var W, H;
-  var particles = [];
-  var PARTICLE_COUNT = 80;
-  var CONNECT_DIST   = 130;
-  var REPEL_DIST     = 100;
-  var REPEL_FORCE    = 0.6;
+  var W = 0, H = 0;
+  var POOL_SIZE    = 55;   // fixed immortal particles
+  var CONNECT_DIST = 120;
+  var CONNECT_SQ   = CONNECT_DIST * CONNECT_DIST;
+  var REPEL_DIST   = 90;
+  var REPEL_SQ     = REPEL_DIST * REPEL_DIST;
+
+  // Throttle to ~30fps
+  var FPS_INTERVAL = 1000 / 30;
+  var lastTick     = 0;
+
+  // Separate arrays: immortal pool and temporary burst particles
+  var pool  = [];
+  var burst = [];
 
   function resize() {
     W = canvas.width  = window.innerWidth;
     H = canvas.height = window.innerHeight;
   }
 
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', function() {
+    clearTimeout(resize._t);
+    resize._t = setTimeout(resize, 150);
+  });
   resize();
 
-  function Particle(x, y) {
-    this.x  = x  !== undefined ? x  : Math.random() * W;
-    this.y  = y  !== undefined ? y  : Math.random() * H;
-    this.vx = (Math.random() - 0.5) * 0.45;
-    this.vy = (Math.random() - 0.5) * 0.45;
-    this.r  = Math.random() * 1.5 + 0.5;
-    this.life = 1; // for spawned particles
-    this.decay = 0; // 0 = immortal, >0 = fades
+  // Particle object
+  function makePart(x, y, isBurst) {
+    return {
+      x:  x !== undefined ? x : Math.random() * W,
+      y:  y !== undefined ? y : Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      r:  Math.random() * 1.4 + 0.5,
+      life: 1,
+      decay: isBurst ? 0.012 + Math.random() * 0.008 : 0,
+    };
   }
 
-  // Spawn initial particles
-  for (var i = 0; i < PARTICLE_COUNT; i++) {
-    particles.push(new Particle());
-  }
+  for (var i = 0; i < POOL_SIZE; i++) pool.push(makePart());
 
-  // Click on background spawns a burst of particles
+  // Click on background = burst (only if not on UI)
   canvas.style.pointerEvents = 'auto';
   canvas.addEventListener('click', function(e) {
     if (_onUI) return;
-    for (var b = 0; b < 6; b++) {
-      var p = new Particle(e.clientX, e.clientY);
-      p.vx = (Math.random() - 0.5) * 2.5;
-      p.vy = (Math.random() - 0.5) * 2.5;
-      p.decay = 0.004;
-      particles.push(p);
+    for (var b = 0; b < 7; b++) {
+      var p = makePart(e.clientX, e.clientY, true);
+      p.vx = (Math.random() - 0.5) * 2.2;
+      p.vy = (Math.random() - 0.5) * 2.2;
+      burst.push(p);
     }
   });
 
-  function tick() {
-    ctx.clearRect(0, 0, W, H);
+  function updateParticle(p, isDying) {
+    // Cursor repulsion
+    var dx   = p.x - _mx;
+    var dy   = p.y - _my;
+    var distSq = dx*dx + dy*dy;
 
-    // Update + draw particles
-    for (var i = particles.length - 1; i >= 0; i--) {
-      var p = particles[i];
-
-      // Cursor repulsion
-      var dx = p.x - _mx;
-      var dy = p.y - _my;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < REPEL_DIST && dist > 0) {
-        var force = (REPEL_DIST - dist) / REPEL_DIST * REPEL_FORCE;
-        p.vx += (dx / dist) * force;
-        p.vy += (dy / dist) * force;
-      }
-
-      // Damping so they don't fly off forever
-      p.vx *= 0.98;
-      p.vy *= 0.98;
-
-      p.x += p.vx;
-      p.y += p.vy;
-
-      // Wrap edges for immortal particles
-      if (p.decay === 0) {
-        if (p.x < 0) p.x = W;
-        if (p.x > W) p.x = 0;
-        if (p.y < 0) p.y = H;
-        if (p.y > H) p.y = 0;
-      }
-
-      // Fade decay particles
-      if (p.decay > 0) {
-        p.life -= p.decay;
-        if (p.life <= 0) {
-          particles.splice(i, 1);
-          continue;
-        }
-      }
-
-      // Draw dot
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(180, 60, 220, ' + (0.5 * p.life) + ')';
-      ctx.fill();
+    if (distSq < REPEL_SQ && distSq > 0) {
+      var dist  = Math.sqrt(distSq);
+      var force = (REPEL_DIST - dist) / REPEL_DIST * 0.55;
+      p.vx += (dx / dist) * force;
+      p.vy += (dy / dist) * force;
     }
 
-    // Draw lines between close particles
-    for (var a = 0; a < particles.length; a++) {
-      for (var b = a + 1; b < particles.length; b++) {
-        var pa = particles[a];
-        var pb = particles[b];
+    p.vx *= 0.975;
+    p.vy *= 0.975;
+    p.x  += p.vx;
+    p.y  += p.vy;
+
+    if (!isDying) {
+      // Wrap edges for immortal particles
+      if (p.x < -5)  p.x = W + 5;
+      if (p.x > W+5) p.x = -5;
+      if (p.y < -5)  p.y = H + 5;
+      if (p.y > H+5) p.y = -5;
+    } else {
+      p.life -= p.decay;
+    }
+  }
+
+  function drawDot(p) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, 6.283);
+    ctx.fillStyle = 'rgba(180,60,220,' + (0.45 * p.life) + ')';
+    ctx.fill();
+  }
+
+  // Build combined list for line drawing
+  var allParts = [];
+
+  function tick(now) {
+    requestAnimationFrame(tick);
+
+    var elapsed = now - lastTick;
+    if (elapsed < FPS_INTERVAL) return;
+    lastTick = now - (elapsed % FPS_INTERVAL);
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Update pool
+    for (var i = 0; i < pool.length; i++) updateParticle(pool[i], false);
+
+    // Update burst, remove dead
+    for (var j = burst.length - 1; j >= 0; j--) {
+      updateParticle(burst[j], true);
+      if (burst[j].life <= 0) burst.splice(j, 1);
+    }
+
+    // Combine for line checks
+    allParts.length = 0;
+    for (var a = 0; a < pool.length;  a++) allParts.push(pool[a]);
+    for (var b = 0; b < burst.length; b++) allParts.push(burst[b]);
+
+    var len = allParts.length;
+
+    // Draw lines first (behind dots)
+    for (var m = 0; m < len - 1; m++) {
+      var pa = allParts[m];
+      for (var n = m + 1; n < len; n++) {
+        var pb  = allParts[n];
         var ddx = pa.x - pb.x;
         var ddy = pa.y - pb.y;
-        var d   = Math.sqrt(ddx * ddx + ddy * ddy);
-
-        if (d < CONNECT_DIST) {
-          var alpha = (1 - d / CONNECT_DIST) * 0.18 * pa.life * pb.life;
+        var dsq = ddx*ddx + ddy*ddy;
+        if (dsq < CONNECT_SQ) {
+          var alpha = (1 - dsq / CONNECT_SQ) * 0.16 * pa.life * pb.life;
           ctx.beginPath();
           ctx.moveTo(pa.x, pa.y);
           ctx.lineTo(pb.x, pb.y);
-          ctx.strokeStyle = 'rgba(180, 60, 220, ' + alpha + ')';
-          ctx.lineWidth = 0.7;
+          ctx.strokeStyle = 'rgba(180,60,220,' + alpha + ')';
+          ctx.lineWidth = 0.6;
           ctx.stroke();
         }
       }
     }
 
-    requestAnimationFrame(tick);
+    // Draw dots
+    for (var k = 0; k < len; k++) drawDot(allParts[k]);
   }
 
-  tick();
+  requestAnimationFrame(tick);
 })();
 
 /* ====================================================
@@ -169,7 +212,7 @@ var _onUI = false;
    ==================================================== */
 window.addEventListener('load', function() {
   var pl = document.getElementById('preloader');
-  if (pl) setTimeout(function() { pl.classList.add('done'); }, 280);
+  if (pl) setTimeout(function() { pl.classList.add('done'); }, 200);
 });
 
 /* ====================================================
@@ -181,16 +224,14 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 /* ====================================================
    REVEAL ON SCROLL
    ==================================================== */
-(function initReveal() {
+(function() {
   var els = document.querySelectorAll('.reveal');
   if (!els.length) return;
-
   var obs = new IntersectionObserver(function(entries) {
     entries.forEach(function(e) {
       if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
     });
-  }, { threshold: 0.12 });
-
+  }, { threshold: 0.1 });
   els.forEach(function(el) { obs.observe(el); });
 })();
 
@@ -202,9 +243,8 @@ document.addEventListener('DOMContentLoaded', init);
 async function init() {
   setupScrollWatch();
 
-  // If a previous session flagged locked, show it immediately
   if (sessionStorage.getItem('nc_locked') === '1') {
-    showLockOverlay(null);
+    showLockOverlay(null); return;
   }
 
   var cached = sessionStorage.getItem('nc_user');
@@ -219,15 +259,12 @@ async function init() {
   try {
     var res = await fetch('/api/me', { credentials: 'include' });
     if (!res.ok) { sessionStorage.removeItem('nc_user'); return; }
-
     var user = await res.json();
     if (user.locked) {
       sessionStorage.removeItem('nc_user');
       sessionStorage.setItem('nc_locked', '1');
-      showLockOverlay(user);
-      return;
+      showLockOverlay(user); return;
     }
-
     sessionStorage.setItem('nc_user', JSON.stringify(user));
     renderUserState(user);
   } catch(err) {
@@ -237,28 +274,20 @@ async function init() {
 
 /* ====================================================
    LOCK OVERLAY
-   Covers everything. Redirects all navigation here.
    ==================================================== */
 function showLockOverlay(user) {
   var overlay = document.getElementById('lock-overlay');
   if (overlay) overlay.classList.remove('hidden');
-
   if (user && user.id) {
     var uid = document.getElementById('lock-uid');
     if (uid) uid.textContent = 'Account ID: ' + user.id;
   }
-
-  // Block all navigation away
-  window.addEventListener('beforeunload', function() {
-    sessionStorage.setItem('nc_locked', '1');
-  });
 }
 
 /* ====================================================
-   RENDER LOGGED-IN STATE
+   RENDER USER STATE
    ==================================================== */
 function renderUserState(user) {
-  // Nav
   var navUser = document.getElementById('nav-user');
   if (navUser) navUser.classList.remove('hidden');
 
@@ -268,30 +297,24 @@ function renderUserState(user) {
   var img = document.getElementById('nav-avatar-img');
   if (img && user.avatar) {
     img.src = 'https://cdn.discordapp.com/avatars/' + user.id + '/' + user.avatar + '.png?size=64';
-    img.classList.remove('default-icon');
-    img.style.filter = 'none';
-    img.width = 28; img.height = 28;
+    img.width  = 28; img.height = 28;
+    img.style.width  = '28px';
+    img.style.height = '28px';
   }
 
-  // Role badge
   var badge = document.getElementById('nav-role');
-  if (badge && user.membership) {
-    var m = user.membership;
-    if (m !== 'default') {
-      badge.textContent = m === 'mommys_favorite' ? "MOM'S FAV" : m.replace('_', ' ').toUpperCase();
-      badge.classList.remove('hidden');
-      if (user.is_admin) badge.classList.add('admin');
-      else badge.classList.add('member');
-    }
+  if (badge && user.membership && user.membership !== 'default') {
+    badge.textContent = user.is_admin ? 'ADMIN'
+      : user.membership === 'mommys_favorite' ? "MOM'S FAV"
+      : user.membership.replace(/_/g,' ').toUpperCase();
+    badge.classList.remove('hidden');
+    badge.classList.add(user.is_admin ? 'admin' : 'member');
   }
 
-  // Hero state
   var guest = document.getElementById('state-guest');
   if (guest) guest.style.display = 'none';
 
-  var membership = user.membership || 'default';
-
-  if (membership === 'default') {
+  if (!user.membership || user.membership === 'default') {
     var pending = document.getElementById('state-pending');
     if (pending) pending.classList.remove('hidden');
   } else {
@@ -301,7 +324,7 @@ function renderUserState(user) {
 }
 
 /* ====================================================
-   TOS PAGE TRANSFORM
+   TOS TRANSFORM
    ==================================================== */
 function openTos() {
   var check = document.getElementById('agree-check');
@@ -332,9 +355,6 @@ function closeTos() {
   }, 300);
 }
 
-/* ====================================================
-   SCROLL WATCH — unlock checkbox at bottom
-   ==================================================== */
 function setupScrollWatch() {
   var unlocked = false;
   window.addEventListener('scroll', function() {
@@ -351,17 +371,12 @@ function setupScrollWatch() {
   }, { passive: true });
 }
 
-/* ====================================================
-   CHECKBOX / AUTH / LOGOUT
-   ==================================================== */
 function onCheck(checkbox) {
   var btn = document.getElementById('btn-verify');
   if (btn) btn.disabled = !checkbox.checked;
 }
 
-function startDiscordAuth() {
-  window.location.href = '/api/auth-redirect';
-}
+function startDiscordAuth() { window.location.href = '/api/auth-redirect'; }
 
 async function logout() {
   sessionStorage.clear();
