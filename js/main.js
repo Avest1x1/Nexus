@@ -258,6 +258,18 @@ function renderLoggedIn(user, profile) {
     const name = profile.username || user.user_metadata?.global_name || 'member'
     badge.textContent = `[ welcome back, ${name} ]`
   }
+
+  /*
+    auto-scroll verified members down to the content section
+    login button is hidden when authed so there's nothing in the hero for them —
+    skip them straight to the about/cards area after auth settles
+  */
+  const aboutSection = document.getElementById('about')
+  if (aboutSection) {
+    setTimeout(() => {
+      aboutSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 500)
+  }
 }
 
 function buildNavAuth(user, profile) {

@@ -384,27 +384,44 @@
     <!-- AGREEMENT ACTION AREA -->
     <div class="license-action-area" id="license-action">
 
-      <label class="license-check-wrap" for="license-agree-checkbox" id="license-check-label">
-        <span class="license-checkbox-outer" id="checkbox-outer" role="checkbox" aria-checked="false" tabindex="0">
-          <img 
-            src="assets/icons/checkmark.svg" 
-            alt="checked" 
-            class="license-checkmark-icon" 
+      <!--
+        NO "for" attribute on this div — the label-for mechanism causes a double-toggle bug:
+        clicking the span fires our JS handler AND bubbles to label which re-fires checkbox change.
+        All interaction is purely JS-driven below.
+      -->
+      <div class="license-check-wrap" id="license-check-label">
+        <span
+          class="license-checkbox-outer"
+          id="checkbox-outer"
+          role="checkbox"
+          aria-checked="false"
+          tabindex="0"
+          aria-label="I agree to the Nexus Collective Membership Agreement"
+        >
+          <!-- pointer-events:none on img prevents it from eating the click hit-area -->
+          <img
+            src="assets/icons/checkmark.svg"
+            alt=""
+            class="license-checkmark-icon"
             id="checkmark-icon"
             aria-hidden="true"
+            draggable="false"
           />
         </span>
-        <input 
-          type="checkbox" 
-          id="license-agree-checkbox" 
-          class="license-checkbox-hidden" 
-          aria-label="I have read and agree to the Nexus Collective Membership Agreement"
+        <!-- hidden input for semantics only — no tabindex, no direct interaction -->
+        <input
+          type="checkbox"
+          id="license-agree-checkbox"
+          class="license-checkbox-hidden"
+          tabindex="-1"
+          aria-hidden="true"
         />
-        <span class="license-check-text">
-          I have read this Agreement in full and I <strong class="lic-em">expressly consent</strong> to 
+        <!-- clicking the text also toggles -->
+        <span class="license-check-text" id="license-check-text">
+          I have read this Agreement in full and I <strong class="lic-em">expressly consent</strong> to
           IP address collection and all terms stated above.
         </span>
-      </label>
+      </div>
 
       <div class="license-btns">
         <button class="btn btn-primary license-proceed-btn" id="btn-proceed" disabled>
@@ -432,11 +449,11 @@
   <script type="module">
     import { signInWithDiscord } from './js/supabase-client.js'
 
-    const checkbox    = document.getElementById('license-agree-checkbox')
-    const outerBox    = document.getElementById('checkbox-outer')
-    const checkIcon   = document.getElementById('checkmark-icon')
-    const proceedBtn  = document.getElementById('btn-proceed')
-    const hint        = document.getElementById('license-hint')
+    const checkbox   = document.getElementById('license-agree-checkbox')
+    const outerBox   = document.getElementById('checkbox-outer')
+    const checkText  = document.getElementById('license-check-text')
+    const proceedBtn = document.getElementById('btn-proceed')
+    const hint       = document.getElementById('license-hint')
 
     function syncCheckState(checked) {
       checkbox.checked = checked
@@ -446,21 +463,30 @@
       hint.style.display = checked ? 'none' : ''
     }
 
-    /* clicking the custom box or the label text both toggle */
-    outerBox.addEventListener('click', () => syncCheckState(!checkbox.checked))
+    /*
+      Only the outer span and the text span have click handlers.
+      The hidden checkbox input has tabindex="-1" and aria-hidden so it
+      never receives direct interaction — no double-fire.
+    */
+    outerBox.addEventListener('click', (e) => {
+      e.stopPropagation()
+      syncCheckState(!checkbox.checked)
+    })
+    checkText.addEventListener('click', () => syncCheckState(!checkbox.checked))
+
+    /* keyboard support on the custom checkbox role */
     outerBox.addEventListener('keydown', e => {
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
         syncCheckState(!checkbox.checked)
       }
     })
-    checkbox.addEventListener('change', () => syncCheckState(checkbox.checked))
 
     proceedBtn.addEventListener('click', async () => {
       if (!checkbox.checked) return
 
-      /* stamp acceptance in localStorage so index.html knows not to redirect again */
-      try { localStorage.setItem('nexus-license-v1', '1') } catch { /* blocked */ }
+      /* stamp acceptance so index.html skips the license redirect */
+      try { localStorage.setItem('nexus-license-v1', '1') } catch { /* storage blocked */ }
 
       proceedBtn.disabled = true
       const span = proceedBtn.querySelector('span')
@@ -474,7 +500,7 @@
       }
     })
 
-    /* if they somehow already accepted before and got sent here, skip straight to login */
+    /* returning visitor who already accepted — pre-check and inform */
     try {
       if (localStorage.getItem('nexus-license-v1') === '1') {
         syncCheckState(true)
@@ -484,7 +510,7 @@
       }
     } catch { /* ignore */ }
 
-    /* set year in footer */
+    /* footer year */
     const yearEl = document.getElementById('year')
     if (yearEl) yearEl.textContent = new Date().getFullYear()
   </script>

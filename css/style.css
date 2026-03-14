@@ -1057,7 +1057,10 @@ body.license-page {
   transform: scale(0.5);
   transition: opacity 0.18s ease, transform 0.18s ease;
   filter: brightness(0) saturate(100%) invert(30%) sepia(90%) saturate(700%) hue-rotate(260deg) brightness(130%);
-  pointer-events: none;
+  pointer-events: none !important;
+  user-select: none;
+  -webkit-user-drag: none;
+  display: block;
 }
 
 .license-checkbox-outer.checked .license-checkmark-icon {
