@@ -167,7 +167,7 @@ async function setupAuth() {
 
       cacheProfile(currentProfile)
       hideLockScreen()
-      renderLoggedIn(session.user, currentProfile)
+      renderLoggedIn(session.user, currentProfile, true) // true = fresh login, trigger scroll
     }
   })
 }
@@ -236,7 +236,7 @@ function clearNav() {
   if (navAuth) navAuth.innerHTML = ''
 }
 
-function renderLoggedIn(user, profile) {
+function renderLoggedIn(user, profile, freshLogin = false) {
   document.body.classList.add('is-authed')
 
   const navAuth = document.getElementById('nav-auth')
@@ -260,15 +260,20 @@ function renderLoggedIn(user, profile) {
   }
 
   /*
-    auto-scroll verified members down to the content section
-    login button is hidden when authed so there's nothing in the hero for them —
-    skip them straight to the about/cards area after auth settles
+    only auto-scroll on index.html and only on a fresh SIGNED_IN — not on every
+    tab switch or cached restore. freshLogin is passed as true exclusively from
+    the SIGNED_IN branch of onAuthStateChange.
   */
-  const aboutSection = document.getElementById('about')
-  if (aboutSection) {
-    setTimeout(() => {
-      aboutSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 500)
+  const onIndexPage = window.location.pathname.endsWith('index.html')
+                   || window.location.pathname === '/'
+                   || window.location.pathname === ''
+  if (freshLogin && onIndexPage) {
+    const aboutSection = document.getElementById('about')
+    if (aboutSection) {
+      setTimeout(() => {
+        aboutSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 600)
+    }
   }
 }
 
