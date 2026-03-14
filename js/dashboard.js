@@ -1,14 +1,15 @@
 /*
   dashboard.js
   admin panel logic — auth gate, member table, edit modal
-  uses getProfile() from supabase-client.js exactly like main.js does
+  uses onAuthStateChange so the session is guaranteed ready before init runs
 */
 
-import { supabase, getProfile, signOut } from './supabase-client.js'
+import { supabase, signOut } from './supabase-client.js'
 
 let allMembers    = []
 let editingUserId = null
 let currentAdmin  = null
+let initRan       = false
 
 const gate        = document.getElementById('dash-gate')
 const gateLabel   = document.getElementById('gate-label')
@@ -17,16 +18,57 @@ const dashWrap    = document.getElementById('dash-wrap')
 
 document.getElementById('year').textContent = new Date().getFullYear()
 
-/* ── INIT ────────────────────────────────────────────────────
-   mirrors the exact same flow as main.js:
-   1. getSession() from localStorage (instant, no network)
-   2. getProfile() with retry logic (handles async trigger delay)
-   3. check role — kick if not admin
+/* ── PROFILE FETCH WITH RETRY ────────────────────────────────
+   getProfile() in supabase-client.js only retries 3 times fast.
+   dashboard needs a longer retry window because the db trigger
+   that creates the row can sometimes be slow on first login.
+   this retries up to maxAttempts times with a growing delay and
+   updates the gate label so the user knows it's still working.
    ─────────────────────────────────────────────────────────── */
-async function init() {
+async function fetchProfileWithRetry(userId, maxAttempts = 8) {
+  for (let i = 0; i < maxAttempts; i++) {
+    const attempt = i + 1
 
-  /* step 1: get session — same as main.js, reads from localStorage */
-  const { data: { session } } = await supabase.auth.getSession()
+    if (i > 0) {
+      const waitMs = Math.min(800 + i * 300, 2500)
+      gateLabel.textContent = `loading profile... (attempt ${attempt}/${maxAttempts})`
+      await new Promise(resolve => setTimeout(resolve, waitMs))
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    //-- PGRST116 means no row yet, keep retrying
+    if (error?.code === 'PGRST116') {
+      console.log(`profile not found yet, attempt ${attempt}/${maxAttempts}`)
+      continue
+    }
+
+    if (error) {
+      console.error('profile fetch error:', error.code, error.message)
+      //-- non-404 error, no point retrying
+      return null
+    }
+
+    console.log('profile fetched on attempt', attempt)
+    return data
+  }
+
+  console.log('profile still not found after', maxAttempts, 'attempts')
+  return null
+}
+
+/* ── INIT ────────────────────────────────────────────────────
+   takes the session directly from onAuthStateChange below
+   so we never race against supabase restoring auth from storage
+   ─────────────────────────────────────────────────────────── */
+async function init(session) {
+  //-- guard against INITIAL_SESSION + SIGNED_IN both firing
+  if (initRan) return
+  initRan = true
 
   if (!session) {
     kick('no session — redirecting...')
@@ -34,17 +76,14 @@ async function init() {
     return
   }
 
-  /* step 2: get profile using the same getProfile() with retries
-     this is identical to what main.js does — no custom raw query */
   gateLabel.textContent = 'loading profile...'
-  const profile = await getProfile(session.user.id)
+  const profile = await fetchProfileWithRetry(session.user.id)
 
   if (!profile) {
     kick('could not load profile — try signing out and back in')
     return
   }
 
-  /* step 3: check admin role */
   const isAdmin = profile.is_super_admin === true || profile.role === 'admin'
 
   if (!isAdmin) {
@@ -53,7 +92,6 @@ async function init() {
     return
   }
 
-  /* step 4: passed — show dashboard */
   currentAdmin = { session, profile }
 
   gateSpinner.style.display = 'none'
@@ -72,6 +110,18 @@ async function init() {
   await loadMembers()
 }
 
+/* ── ENTRY POINT ─────────────────────────────────────────────
+   INITIAL_SESSION fires once on page load when supabase has
+   finished restoring auth state from localStorage. this is the
+   correct hook for "is there a session right now?" — it's what
+   main.js is implicitly relying on via onAuthStateChange too.
+   SIGNED_IN covers the edge case of someone landing here mid-oauth.
+   ─────────────────────────────────────────────────────────── */
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
+  await init(session)
+})
+
 /* ── KICK ───────────────────────────────────────────────────── */
 function kick(msg) {
   gateSpinner.style.display = 'none'
@@ -87,7 +137,7 @@ function renderAdminBadge(user, profile) {
   const badge    = document.getElementById('dash-admin-badge')
   const avatarEl = document.getElementById('dash-admin-avatar')
   const nameEl   = document.getElementById('dash-admin-name')
-  avatarEl.src = profile.avatar_url || ''
+  avatarEl.src       = profile.avatar_url || ''
   nameEl.textContent = (profile.username || 'admin') + (profile.is_super_admin ? ' [SUPER]' : ' [ADMIN]')
   badge.style.display = 'flex'
 }
@@ -120,7 +170,7 @@ async function loadMembers() {
     return
   }
 
-  /* grab latest ip log per user */
+  //-- grab latest ip log per user
   const { data: ipRows } = await supabase
     .from('ip_logs')
     .select('user_id, ip_address, timezone, logged_at')
@@ -142,10 +192,10 @@ async function loadMembers() {
 
 /* ── STATS ──────────────────────────────────────────────────── */
 function updateStats() {
-  document.getElementById('stat-total').textContent  = allMembers.length
-  document.getElementById('stat-locked').textContent = allMembers.filter(m => m.locked).length
-  document.getElementById('stat-contrib').textContent= allMembers.filter(m => m.is_contributor).length
-  document.getElementById('stat-admins').textContent = allMembers.filter(m => m.role === 'admin' || m.is_super_admin).length
+  document.getElementById('stat-total').textContent   = allMembers.length
+  document.getElementById('stat-locked').textContent  = allMembers.filter(m => m.locked).length
+  document.getElementById('stat-contrib').textContent = allMembers.filter(m => m.is_contributor).length
+  document.getElementById('stat-admins').textContent  = allMembers.filter(m => m.role === 'admin' || m.is_super_admin).length
 }
 
 /* ── RENDER TABLE ───────────────────────────────────────────── */
@@ -210,7 +260,7 @@ function renderTable(members) {
     `
   }).join('')
 
-  /* event delegation — one listener on tbody instead of inline onclick */
+  //-- event delegation — one listener on tbody instead of inline onclick
   tbody.querySelectorAll('[data-id]').forEach(btn => {
     btn.addEventListener('click', () => openEdit(btn.dataset.id))
   })
@@ -253,12 +303,12 @@ function openEdit(userId) {
   if (!member) return
 
   editingUserId = userId
-  document.getElementById('modal-sub').textContent          = `// ${member.username || userId}`
-  document.getElementById('modal-role').value                = member.role || 'visitor'
-  document.getElementById('modal-contributor').checked       = !!member.is_contributor
-  document.getElementById('modal-locked').checked            = !!member.locked
-  document.getElementById('modal-lock-reason').value         = member.lock_reason || ''
-  document.getElementById('edit-modal').hidden               = false
+  document.getElementById('modal-sub').textContent        = `// ${member.username || userId}`
+  document.getElementById('modal-role').value              = member.role || 'visitor'
+  document.getElementById('modal-contributor').checked     = !!member.is_contributor
+  document.getElementById('modal-locked').checked          = !!member.locked
+  document.getElementById('modal-lock-reason').value       = member.lock_reason || ''
+  document.getElementById('edit-modal').hidden             = false
 }
 
 function closeModal() {
@@ -302,7 +352,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     return
   }
 
-  /* update local state so table reflects change immediately */
+  //-- update local state so table reflects change immediately
   const idx = allMembers.findIndex(m => m.id === editingUserId)
   if (idx !== -1) {
     allMembers[idx].role           = newRole
@@ -343,5 +393,3 @@ function esc(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
 }
-
-init()
