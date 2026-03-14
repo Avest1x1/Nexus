@@ -176,16 +176,28 @@ function setupLoginBtn() {
   const btn = document.getElementById('btn-login')
   if (!btn) return
 
-  btn.addEventListener('click', async () => {
+  btn.addEventListener('click', () => {
+    /*
+      check if the user has already accepted the membership agreement
+      nexus-license-v1 is set by license.html after they check the box and click agree
+      if it's missing, send them to the agreement page first — the agreement page
+      will handle calling signInWithDiscord() itself after acceptance
+    */
+    let accepted = false
+    try { accepted = localStorage.getItem('nexus-license-v1') === '1' } catch { /* blocked */ }
+
+    if (!accepted) {
+      window.location.href = 'license.html'
+      return
+    }
+
     btn.disabled = true
     const span = btn.querySelector('span')
     if (span) span.textContent = 'Redirecting...'
-    try {
-      await signInWithDiscord()
-    } catch {
+    signInWithDiscord().catch(() => {
       btn.disabled = false
       if (span) span.textContent = 'Login with Discord'
-    }
+    })
   })
 }
 

@@ -796,3 +796,322 @@ body.is-authed .no-auth-only { display: none !important; }
   .btn { justify-content: center; }
   .nav-username { display: none; }
 }
+/* =====================================================
+   LICENSE PAGE
+   ===================================================== */
+
+body.license-page {
+  background: var(--bg);
+}
+
+.nav-license-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+
+.license-wrapper {
+  position: relative;
+  z-index: 10;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 110px 32px 60px;
+}
+
+/* header */
+.license-header {
+  text-align: center;
+  margin-bottom: 56px;
+  animation: enterUp 0.8s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.license-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 16px 0 12px;
+}
+
+.license-title-main {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 6vw, 52px);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: #fff;
+  text-shadow: 0 0 60px rgba(196, 0, 255, 0.2);
+}
+
+.license-title-sub {
+  font-family: var(--font-display);
+  font-size: clamp(10px, 1.6vw, 14px);
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.license-version {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* body */
+.license-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  animation: enterUp 0.8s 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lic-section {
+  padding: 28px 28px 28px 24px;
+  border-left: 2px solid var(--border);
+  margin-bottom: 2px;
+  background: rgba(11, 4, 21, 0.55);
+  border-radius: 0 2px 2px 0;
+  transition: border-color 0.2s;
+}
+
+.lic-section:hover {
+  border-left-color: rgba(196, 0, 255, 0.45);
+}
+
+.lic-section-highlight {
+  border-left-color: rgba(196, 0, 255, 0.5);
+  background: rgba(196, 0, 255, 0.04);
+}
+
+.lic-section-highlight:hover {
+  border-left-color: var(--accent);
+}
+
+.lic-section-final {
+  border-left-color: rgba(139, 159, 255, 0.4);
+  background: rgba(139, 159, 255, 0.03);
+}
+
+.lic-heading {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.lic-num {
+  color: var(--accent-2);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.lic-subheading {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin: 18px 0 10px;
+}
+
+.lic-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.9;
+  margin-bottom: 12px;
+}
+
+.lic-text:last-child {
+  margin-bottom: 0;
+}
+
+.lic-em {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.lic-warning {
+  color: rgba(255, 53, 85, 0.75);
+  border: 1px solid rgba(255, 53, 85, 0.2);
+  background: rgba(255, 53, 85, 0.04);
+  padding: 12px 14px;
+  border-radius: 2px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  line-height: 1.7;
+}
+
+.lic-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.lic-list li {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  padding-left: 18px;
+  position: relative;
+}
+
+.lic-list li::before {
+  content: '//';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-size: 9px;
+  opacity: 0.45;
+  top: 2px;
+}
+
+.lic-confirm-list li {
+  color: var(--text-dim);
+}
+
+.lic-confirm-list li::before {
+  color: var(--accent-2);
+  opacity: 0.65;
+}
+
+/* agreement action area */
+.license-action-area {
+  margin-top: 48px;
+  padding: 32px 28px;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  background: rgba(11, 4, 21, 0.8);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  animation: enterUp 0.8s 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* custom checkbox */
+.license-check-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.license-checkbox-hidden {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.license-checkbox-outer {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid rgba(196, 0, 255, 0.45);
+  border-radius: 2px;
+  background: rgba(196, 0, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  margin-top: 1px;
+}
+
+.license-checkbox-outer:focus,
+.license-checkbox-outer:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(196, 0, 255, 0.35);
+}
+
+.license-checkbox-outer:hover {
+  border-color: var(--accent);
+  background: rgba(196, 0, 255, 0.1);
+}
+
+.license-checkbox-outer.checked {
+  border-color: var(--accent);
+  background: rgba(196, 0, 255, 0.18);
+  box-shadow: 0 0 12px rgba(196, 0, 255, 0.25);
+}
+
+.license-checkmark-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  filter: brightness(0) saturate(100%) invert(30%) sepia(90%) saturate(700%) hue-rotate(260deg) brightness(130%);
+  pointer-events: none;
+}
+
+.license-checkbox-outer.checked .license-checkmark-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.license-check-text {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.75;
+}
+
+/* buttons */
+.license-btns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.license-proceed-btn {
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity 0.25s, background 0.22s, border-color 0.22s, box-shadow 0.22s, transform 0.22s;
+}
+
+.license-proceed-btn:not([disabled]) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.license-hint {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-top: -8px;
+}
+
+/* resources-hero used in resources.html */
+.resources-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding-top: 80px;
+  padding-bottom: 40px;
+}
+
+/* responsive */
+@media (max-width: 600px) {
+  .license-wrapper { padding: 90px 18px 50px; }
+  .lic-section { padding: 20px 18px 20px 16px; }
+  .license-action-area { padding: 24px 18px; }
+  .license-btns { flex-direction: column; }
+  .license-btns .btn { justify-content: center; }
+}
