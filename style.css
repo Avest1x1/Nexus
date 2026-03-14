@@ -224,7 +224,8 @@ body.page-enter .site-nav {
   align-items: center; justify-content: center;
   padding: 100px 24px 120px;
   text-align: center;
-  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.4,0,0.2,1),
+              height 0s, min-height 0s, padding 0s;
 }
 
 html.tos-open #hero {
@@ -485,9 +486,17 @@ html.tos-open #hero {
 /* ══════════════════════════════════════════════════════
    TOS PAGE TRANSFORM
    ══════════════════════════════════════════════════════ */
-html { overflow: hidden; height: 100%; }
+/* Main page scrolls normally so about section is reachable.
+   When ToS opens, collapse the hero so no gap appears above ToS. */
 html.tos-open { overflow-y: auto; overflow-x: hidden; }
-body { min-height: 100%; }
+html.tos-open #hero {
+  height: 0 !important;
+  min-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  overflow: hidden;
+}
+html.tos-open .scroll-hint { display: none; }
 
 #tos-section {
   position: relative; z-index: 10; min-height: 100vh;
