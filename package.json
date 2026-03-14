@@ -1,0 +1,13 @@
+{
+  "name": "nexus-collective",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NEXUS COLLECTIVE — private resource hub",
+  "type": "module",
+  "dependencies": {
+    "node-appwrite": "^14.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
