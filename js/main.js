@@ -303,23 +303,33 @@ function renderUserState(user) {
   }
 
   var badge = document.getElementById('nav-role');
-  if (badge && user.membership && user.membership !== 'default') {
-    badge.textContent = user.is_admin ? 'ADMIN'
-      : user.membership === 'mommys_favorite' ? "MOM'S FAV"
-      : user.membership.replace(/_/g,' ').toUpperCase();
-    badge.classList.remove('hidden');
-    badge.classList.add(user.is_admin ? 'admin' : 'member');
+  if (badge) {
+    // Show badge for admins regardless of membership, and for non-default members
+    if (user.is_admin) {
+      badge.textContent = 'ADMIN';
+      badge.classList.remove('hidden');
+      badge.classList.add('admin');
+    } else if (user.membership && user.membership !== 'default') {
+      badge.textContent = user.membership === 'mommys_favorite' ? "MOM'S FAV"
+        : user.membership.replace(/_/g,' ').toUpperCase();
+      badge.classList.remove('hidden');
+      badge.classList.add('member');
+    }
   }
 
-  var guest = document.getElementById('state-guest');
-  if (guest) guest.style.display = 'none';
+  // Always reset all state cards first so stale cache never stacks
+  var guest    = document.getElementById('state-guest');
+  var pending  = document.getElementById('state-pending');
+  var approved = document.getElementById('state-approved');
+  if (guest)    guest.style.display = 'none';
+  if (pending)  pending.classList.add('hidden');
+  if (approved) approved.classList.add('hidden');
 
-  if (!user.membership || user.membership === 'default') {
-    var pending = document.getElementById('state-pending');
-    if (pending) pending.classList.remove('hidden');
-  } else {
-    var approved = document.getElementById('state-approved');
+  // Now show exactly one
+  if (user.is_admin || (user.membership && user.membership !== 'default')) {
     if (approved) approved.classList.remove('hidden');
+  } else {
+    if (pending) pending.classList.remove('hidden');
   }
 }
 
