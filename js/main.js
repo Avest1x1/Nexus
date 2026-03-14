@@ -7,10 +7,6 @@ import { supabase, signInWithDiscord, signOut, getProfile, callOnLogin } from '.
 
 let currentProfile = null
 
-/*
-  cache profile in sessionStorage so tab switches don't re-auth
-  sessionStorage is per-tab and clears when the tab closes — safe to use
-*/
 function cacheProfile(profile) {
   try {
     sessionStorage.setItem('nexus-profile', JSON.stringify(profile))
@@ -52,39 +48,23 @@ function setupPreloader() {
 async function setupAuth() {
   showAuthLoading()
 
-  /*
-    step 1: check sessionStorage cache — if we already loaded the profile
-    this tab session, use it instantly with no network call at all
-    this is what prevents the re-auth flash when switching tabs
-  */
   const cached = getCachedProfile()
-
-  /*
-    step 2: getSession() reads from localStorage — no network, instant
-    same call debug.html makes that always works
-  */
   const { data: { session: initialSession } } = await supabase.auth.getSession()
 
   if (!initialSession) {
     clearCachedProfile()
     clearNav()
   } else if (cached) {
-    /*
-      session exists AND we have a cached profile — render immediately
-      no network call needed, tab switch won't re-auth
-    */
     console.log('restored from session cache instantly')
     currentProfile = cached
     if (currentProfile.locked) {
       showLockScreen(currentProfile.lock_reason)
     } else {
       renderLoggedIn(initialSession.user, currentProfile)
+      // fire ip log silently every page load — no await, never blocks ui
+      logVisitInBackground(initialSession.access_token)
     }
   } else {
-    /*
-      session exists but no cache (first load, or cache cleared)
-      fetch the profile from supabase
-    */
     console.log('session found, fetching profile...')
     currentProfile = await getProfile(initialSession.user.id)
 
@@ -95,19 +75,16 @@ async function setupAuth() {
     } else {
       cacheProfile(currentProfile)
       renderLoggedIn(initialSession.user, currentProfile)
+      // fire ip log silently every page load — no await, never blocks ui
+      logVisitInBackground(initialSession.access_token)
     }
   }
 
-  /*
-    step 3: listen for actual state changes after initial load
-    INITIAL_SESSION is skipped — already handled above
-    TOKEN_REFRESHED is skipped if we already have a profile — no re-auth on tab switch
-  */
   supabase.auth.onAuthStateChange(async (event, session) => {
     console.log('auth state change:', event)
 
     if (event === 'INITIAL_SESSION') {
-      return // handled above
+      return
     }
 
     if (event === 'SIGNED_OUT' || !session) {
@@ -120,11 +97,6 @@ async function setupAuth() {
     }
 
     if (event === 'TOKEN_REFRESHED') {
-      /*
-        this fires when you switch back to the tab — DO NOT re-auth
-        if we have a profile, we're fine, just silently refresh the token
-        if somehow we don't, fetch quietly without showing the loading state
-      */
       if (!currentProfile) {
         currentProfile = getCachedProfile() || await getProfile(session.user.id)
         if (currentProfile) {
@@ -136,10 +108,6 @@ async function setupAuth() {
     }
 
     if (event === 'SIGNED_IN') {
-      /*
-        actual fresh login from discord oauth redirect
-        run the edge function for ip logging + lock check
-      */
       showAuthLoading()
       clearCachedProfile()
 
@@ -167,7 +135,7 @@ async function setupAuth() {
 
       cacheProfile(currentProfile)
       hideLockScreen()
-      renderLoggedIn(session.user, currentProfile, true) // true = fresh login, trigger scroll
+      renderLoggedIn(session.user, currentProfile, true)
     }
   })
 }
@@ -177,12 +145,6 @@ function setupLoginBtn() {
   if (!btn) return
 
   btn.addEventListener('click', () => {
-    /*
-      check if the user has already accepted the membership agreement
-      nexus-license-v1 is set by license.html after they check the box and click agree
-      if it's missing, send them to the agreement page first — the agreement page
-      will handle calling signInWithDiscord() itself after acceptance
-    */
     let accepted = false
     try { accepted = localStorage.getItem('nexus-license-v1') === '1' } catch { /* blocked */ }
 
@@ -259,11 +221,7 @@ function renderLoggedIn(user, profile, freshLogin = false) {
     badge.textContent = `[ welcome back, ${name} ]`
   }
 
-  /*
-    only auto-scroll on index.html and only on a fresh SIGNED_IN — not on every
-    tab switch or cached restore. freshLogin is passed as true exclusively from
-    the SIGNED_IN branch of onAuthStateChange.
-  */
+  // auto-scroll only on fresh SIGNED_IN on index.html
   const onIndexPage = window.location.pathname.endsWith('index.html')
                    || window.location.pathname === '/'
                    || window.location.pathname === ''
@@ -333,6 +291,21 @@ function esc(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
+}
+
+// fires callOnLogin as a background task — no await, never blocks the ui.
+// logs ip + timezone to ip_logs and sessions on every page load.
+// if the edge function is down it just warns quietly and moves on.
+function logVisitInBackground(accessToken) {
+  callOnLogin(accessToken).then(result => {
+    if (result?.profile) {
+      if (result.profile.locked && !currentProfile?.locked) {
+        showLockScreen(result.profile.lock_reason)
+      }
+    }
+  }).catch(err => {
+    console.warn('background ip log failed (non-fatal):', err.message)
+  })
 }
 
 init()
