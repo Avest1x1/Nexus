@@ -1,7 +1,7 @@
 /*
   dashboard.js
-  admin panel logic — auth gate, member table, edit modal
-  uses onAuthStateChange so the session is guaranteed ready before init runs
+  admin panel — gate checks session only (instant from localStorage)
+  dashboard shell shows immediately, table area handles role check and auto-fetch
 */
 
 import { supabase, signOut } from './supabase-client.js'
@@ -9,29 +9,91 @@ import { supabase, signOut } from './supabase-client.js'
 let allMembers    = []
 let editingUserId = null
 let currentAdmin  = null
-let initRan       = false
 
 const gate        = document.getElementById('dash-gate')
 const gateLabel   = document.getElementById('gate-label')
 const gateSpinner = document.getElementById('gate-spinner')
 const dashWrap    = document.getElementById('dash-wrap')
+const tbody       = document.getElementById('members-tbody')
 
 document.getElementById('year').textContent = new Date().getFullYear()
 
-/* ── PROFILE FETCH WITH RETRY ────────────────────────────────
-   getProfile() in supabase-client.js only retries 3 times fast.
-   dashboard needs a longer retry window because the db trigger
-   that creates the row can sometimes be slow on first login.
-   this retries up to maxAttempts times with a growing delay and
-   updates the gate label so the user knows it's still working.
+/* ── ENTRY POINT ─────────────────────────────────────────────
+   INITIAL_SESSION fires once supabase has finished restoring
+   auth from localStorage — the session check itself is instant.
+   we open the gate the moment we confirm a session exists, then
+   the table area handles the slower profile/role check itself.
    ─────────────────────────────────────────────────────────── */
-async function fetchProfileWithRetry(userId, maxAttempts = 8) {
-  for (let i = 0; i < maxAttempts; i++) {
-    const attempt = i + 1
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
 
+  if (!session) {
+    kick('no session — redirecting...')
+    setTimeout(() => { window.location.href = 'index.html' }, 1800)
+    return
+  }
+
+  //-- session confirmed — open the gate immediately, no profile wait
+  openGate()
+
+  //-- role check + table load happens in the background
+  //-- the table area shows its own status while this resolves
+  setTableStatus('// checking permissions...')
+  await resolveAdminAndLoad(session)
+})
+
+/* ── OPEN GATE ───────────────────────────────────────────────
+   dismisses the overlay the moment session is confirmed
+   ─────────────────────────────────────────────────────────── */
+function openGate() {
+  gateSpinner.style.display = 'none'
+  gateLabel.textContent     = '✓ session verified'
+  gateLabel.style.color     = 'rgba(100,220,150,0.9)'
+  gateLabel.style.animation = 'none'
+
+  setTimeout(() => {
+    gate.classList.add('hidden')
+    dashWrap.classList.add('visible')
+    gate.addEventListener('transitionend', () => { gate.style.display = 'none' }, { once: true })
+  }, 400)
+}
+
+/* ── RESOLVE ADMIN AND LOAD ──────────────────────────────────
+   polls for the profile row then checks role.
+   if admin: builds nav, badge, loads the members table.
+   if not admin: shows denial in table area then redirects.
+   ─────────────────────────────────────────────────────────── */
+async function resolveAdminAndLoad(session) {
+  const profile = await fetchProfileWithRetry(session.user.id)
+
+  if (!profile) {
+    setTableStatus('// could not load profile — try signing out and back in')
+    return
+  }
+
+  const isAdmin = profile.is_super_admin === true || profile.role === 'admin'
+
+  if (!isAdmin) {
+    setTableStatus('// access denied — admin only')
+    setTimeout(() => { window.location.href = 'index.html' }, 2000)
+    return
+  }
+
+  currentAdmin = { session, profile }
+  renderAdminBadge(session.user, profile)
+  buildNav(profile)
+  await loadMembers()
+}
+
+/* ── PROFILE FETCH WITH RETRY ────────────────────────────────
+   polls until the row exists or we run out of attempts.
+   updates the table status each attempt so there's visible feedback.
+   ─────────────────────────────────────────────────────────── */
+async function fetchProfileWithRetry(userId, maxAttempts = 10) {
+  for (let i = 0; i < maxAttempts; i++) {
     if (i > 0) {
-      const waitMs = Math.min(800 + i * 300, 2500)
-      gateLabel.textContent = `loading profile... (attempt ${attempt}/${maxAttempts})`
+      const waitMs = Math.min(800 + i * 400, 3000)
+      setTableStatus(`// checking permissions... (attempt ${i + 1}/${maxAttempts})`)
       await new Promise(resolve => setTimeout(resolve, waitMs))
     }
 
@@ -41,86 +103,28 @@ async function fetchProfileWithRetry(userId, maxAttempts = 8) {
       .eq('id', userId)
       .single()
 
-    //-- PGRST116 means no row yet, keep retrying
-    if (error?.code === 'PGRST116') {
-      console.log(`profile not found yet, attempt ${attempt}/${maxAttempts}`)
-      continue
-    }
+    //-- PGRST116 = row not there yet, keep waiting
+    if (error?.code === 'PGRST116') continue
 
     if (error) {
       console.error('profile fetch error:', error.code, error.message)
-      //-- non-404 error, no point retrying
       return null
     }
 
-    console.log('profile fetched on attempt', attempt)
+    console.log('profile fetched on attempt', i + 1)
     return data
   }
 
-  console.log('profile still not found after', maxAttempts, 'attempts')
+  console.log('profile not found after', maxAttempts, 'attempts')
   return null
 }
 
-/* ── INIT ────────────────────────────────────────────────────
-   takes the session directly from onAuthStateChange below
-   so we never race against supabase restoring auth from storage
+/* ── TABLE STATUS ────────────────────────────────────────────
+   writes a single status row into the table body
    ─────────────────────────────────────────────────────────── */
-async function init(session) {
-  //-- guard against INITIAL_SESSION + SIGNED_IN both firing
-  if (initRan) return
-  initRan = true
-
-  if (!session) {
-    kick('no session — redirecting...')
-    setTimeout(() => { window.location.href = 'index.html' }, 1800)
-    return
-  }
-
-  gateLabel.textContent = 'loading profile...'
-  const profile = await fetchProfileWithRetry(session.user.id)
-
-  if (!profile) {
-    kick('could not load profile — try signing out and back in')
-    return
-  }
-
-  const isAdmin = profile.is_super_admin === true || profile.role === 'admin'
-
-  if (!isAdmin) {
-    kick('access denied — admin only')
-    setTimeout(() => { window.location.href = 'index.html' }, 1800)
-    return
-  }
-
-  currentAdmin = { session, profile }
-
-  gateSpinner.style.display = 'none'
-  gateLabel.textContent     = '✓ access granted'
-  gateLabel.style.color     = 'rgba(100,220,150,0.9)'
-  gateLabel.style.animation = 'none'
-
-  setTimeout(() => {
-    gate.classList.add('hidden')
-    dashWrap.classList.add('visible')
-    gate.addEventListener('transitionend', () => { gate.style.display = 'none' }, { once: true })
-  }, 700)
-
-  renderAdminBadge(session.user, profile)
-  buildNav(profile)
-  await loadMembers()
+function setTableStatus(msg) {
+  tbody.innerHTML = `<tr><td colspan="7" class="table-loading">${esc(msg)}</td></tr>`
 }
-
-/* ── ENTRY POINT ─────────────────────────────────────────────
-   INITIAL_SESSION fires once on page load when supabase has
-   finished restoring auth state from localStorage. this is the
-   correct hook for "is there a session right now?" — it's what
-   main.js is implicitly relying on via onAuthStateChange too.
-   SIGNED_IN covers the edge case of someone landing here mid-oauth.
-   ─────────────────────────────────────────────────────────── */
-supabase.auth.onAuthStateChange(async (event, session) => {
-  if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
-  await init(session)
-})
 
 /* ── KICK ───────────────────────────────────────────────────── */
 function kick(msg) {
@@ -137,8 +141,8 @@ function renderAdminBadge(user, profile) {
   const badge    = document.getElementById('dash-admin-badge')
   const avatarEl = document.getElementById('dash-admin-avatar')
   const nameEl   = document.getElementById('dash-admin-name')
-  avatarEl.src       = profile.avatar_url || ''
-  nameEl.textContent = (profile.username || 'admin') + (profile.is_super_admin ? ' [SUPER]' : ' [ADMIN]')
+  avatarEl.src        = profile.avatar_url || ''
+  nameEl.textContent  = (profile.username || 'admin') + (profile.is_super_admin ? ' [SUPER]' : ' [ADMIN]')
   badge.style.display = 'flex'
 }
 
@@ -157,8 +161,7 @@ function buildNav(profile) {
 
 /* ── LOAD MEMBERS ───────────────────────────────────────────── */
 async function loadMembers() {
-  const tbody = document.getElementById('members-tbody')
-  tbody.innerHTML = '<tr><td colspan="7" class="table-loading">// fetching members...</td></tr>'
+  setTableStatus('// fetching members...')
 
   const { data: profiles, error } = await supabase
     .from('profiles')
@@ -166,7 +169,7 @@ async function loadMembers() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="7" class="table-empty">// error: ${esc(error.message)}</td></tr>`
+    setTableStatus(`// error: ${esc(error.message)}`)
     return
   }
 
@@ -200,7 +203,6 @@ function updateStats() {
 
 /* ── RENDER TABLE ───────────────────────────────────────────── */
 function renderTable(members) {
-  const tbody = document.getElementById('members-tbody')
   document.getElementById('dash-count').textContent = `${members.length} member${members.length !== 1 ? 's' : ''}`
 
   if (!members.length) {

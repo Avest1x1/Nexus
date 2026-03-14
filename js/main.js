@@ -48,13 +48,6 @@ function setupPreloader() {
 async function setupAuth() {
   showAuthLoading()
 
-  /*
-    onAuthStateChange is the single source of truth for session state.
-    INITIAL_SESSION fires once on page load once supabase has finished
-    restoring auth from localStorage — this replaces the old getSession()
-    call which had a race condition on Vercel where it could resolve before
-    the OAuth hash fragment was parsed and stored.
-  */
   supabase.auth.onAuthStateChange(async (event, session) => {
     console.log('auth state change:', event)
 
@@ -73,21 +66,18 @@ async function setupAuth() {
       const cached = getCachedProfile()
 
       if (cached) {
-        //-- fast path: profile is in sessionStorage, no db hit needed
         console.log('restored from session cache instantly')
         currentProfile = cached
         if (currentProfile.locked) {
           showLockScreen(currentProfile.lock_reason)
         } else {
           renderLoggedIn(session.user, currentProfile)
-          //-- fire ip log silently, never blocks ui
           logVisitInBackground(session.access_token)
         }
         return
       }
 
-      //-- slow path: no cache, fetch from db
-      console.log('INITIAL_SESSION: no cache, fetching profile...')
+      console.log('INITIAL_SESSION: fetching profile...')
       currentProfile = await getProfile(session.user.id)
 
       if (!currentProfile) {
@@ -109,7 +99,6 @@ async function setupAuth() {
     /* ── token refresh ────────────────────────────────────── */
     if (event === 'TOKEN_REFRESHED') {
       if (!currentProfile) {
-        //-- profile somehow got lost, recover it
         currentProfile = getCachedProfile() || await getProfile(session.user.id)
         if (currentProfile) {
           cacheProfile(currentProfile)
@@ -125,27 +114,24 @@ async function setupAuth() {
       clearCachedProfile()
 
       /*
-        call the edge function first — it creates/upserts the profile row
-        and does ip logging. if it returns a profile, use that directly.
-        if it fails (cold start, network, not deployed) we fall through
-        and let getProfile() retry until the row appears.
-        on Vercel, the edge function can take a few seconds on cold start,
-        so getProfile() in supabase-client.js now retries up to 10 times.
+        fire callOnLogin in the background — do NOT await it here.
+        with the postgres trigger in place, the profile row already exists
+        by the time we hit this code, so getProfile() will find it immediately.
+        callOnLogin just enriches it with ip/timezone data which can happen async.
+        previously awaiting callOnLogin meant a cold-starting edge function
+        (~2.5s on free tier) blocked the entire login flow.
       */
-      let result = null
-      try {
-        result = await callOnLogin(session.access_token)
-      } catch (err) {
-        console.error('callOnLogin threw:', err)
-      }
+      callOnLogin(session.access_token).then(result => {
+        //-- if the edge function comes back and says we're locked, act on it
+        if (result?.profile?.locked && !currentProfile?.locked) {
+          showLockScreen(result.profile.lock_reason)
+        }
+      }).catch(err => {
+        console.warn('callOnLogin background error (non-fatal):', err.message)
+      })
 
-      if (result?.profile) {
-        currentProfile = result.profile
-      } else {
-        //-- edge function failed or returned nothing — poll until the row exists
-        console.log('SIGNED_IN: edge function returned no profile, polling db...')
-        currentProfile = await getProfile(session.user.id)
-      }
+      //-- profile row exists immediately thanks to the postgres trigger
+      currentProfile = await getProfile(session.user.id)
 
       if (!currentProfile) {
         showAuthError('Profile not found. Try signing out and back in.')
@@ -318,15 +304,12 @@ function esc(str) {
     .replace(/'/g, '&#039;')
 }
 
-//-- fires callOnLogin as a background task — no await, never blocks the ui.
-//-- logs ip + timezone to ip_logs and sessions on every page load.
-//-- if the edge function is down it just warns quietly and moves on.
+//-- fires callOnLogin as a background task on subsequent page loads (not SIGNED_IN)
+//-- logs ip + timezone on every visit, checks if account got locked server-side
 function logVisitInBackground(accessToken) {
   callOnLogin(accessToken).then(result => {
-    if (result?.profile) {
-      if (result.profile.locked && !currentProfile?.locked) {
-        showLockScreen(result.profile.lock_reason)
-      }
+    if (result?.profile?.locked && !currentProfile?.locked) {
+      showLockScreen(result.profile.lock_reason)
     }
   }).catch(err => {
     console.warn('background ip log failed (non-fatal):', err.message)
