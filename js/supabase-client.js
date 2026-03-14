@@ -107,6 +107,7 @@ export async function callOnLogin(accessToken) {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
+        'apikey':        SUPABASE_ANON_KEY,
         'Content-Type':  'application/json',
       },
       body: JSON.stringify({ timezone }),
