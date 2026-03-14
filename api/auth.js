@@ -1,171 +1,163 @@
 // api/auth.js
-// Discord OAuth code exchange + Appwrite user save.
-// Uses the real node-appwrite SDK: Databases class,
-// listDocuments / createDocument / updateDocument methods.
-
 import { Client, Databases, ID, Query } from 'node-appwrite';
 import crypto from 'crypto';
 
-/* ── Session signing ──────────────────────────────────────── */
 function signSession(data) {
-  const payload = Buffer.from(JSON.stringify(data)).toString('base64url');
-  const sig = crypto
-    .createHmac('sha256', process.env.SESSION_SECRET)
-    .update(payload)
-    .digest('base64url');
-  return `${payload}.${sig}`;
+  var payload = Buffer.from(JSON.stringify(data)).toString('base64url');
+  var sig = crypto.createHmac('sha256', process.env.SESSION_SECRET).update(payload).digest('base64url');
+  return payload + '.' + sig;
 }
 
-/* ── Appwrite Databases client ────────────────────────────── */
 function getDb() {
-  const client = new Client()
+  var client = new Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1')
     .setProject(process.env.APPWRITE_PROJECT_ID)
     .setKey(process.env.APPWRITE_API_KEY);
   return new Databases(client);
 }
 
-/* ── IP extraction ────────────────────────────────────────── */
 function getIp(req) {
-  return (
-    req.headers['x-real-ip'] ||
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    'unknown'
-  );
+  return req.headers['x-real-ip'] ||
+    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+    (req.socket && req.socket.remoteAddress) ||
+    'unknown';
 }
 
-/* ── Main handler ─────────────────────────────────────────── */
 export default async function handler(req, res) {
-  const { code } = req.query;
+  var code = req.query.code;
+  if (!code) return res.status(400).json({ error: 'Missing code.' });
 
-  if (!code) {
-    return res.status(400).json({ error: 'Missing authorization code.' });
-  }
-
-  // 1. Exchange code for Discord access token
-  let tokenData;
+  // 1. Exchange Discord code for token
+  var tokenData;
   try {
-    const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+    var tokenRes = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         client_id:     process.env.DISCORD_CLIENT_ID,
         client_secret: process.env.DISCORD_CLIENT_SECRET,
         grant_type:    'authorization_code',
-        code,
+        code:          code,
         redirect_uri:  process.env.DISCORD_REDIRECT_URI,
       }),
     });
     tokenData = await tokenRes.json();
-    if (!tokenRes.ok) {
-      throw new Error(tokenData.error_description || tokenData.error || 'Token exchange failed');
-    }
+    if (!tokenRes.ok) throw new Error(tokenData.error_description || 'Token exchange failed');
   } catch (err) {
-    console.error('[auth] Token exchange error:', err.message);
+    console.error('[auth] Token error:', err.message);
     return res.status(502).json({ error: 'Discord token exchange failed.', detail: err.message });
   }
 
   // 2. Fetch Discord user
-  let discordUser;
+  var discordUser;
   try {
-    const userRes = await fetch('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    var userRes = await fetch('https://discord.com/api/users/@me', {
+      headers: { Authorization: 'Bearer ' + tokenData.access_token },
     });
     discordUser = await userRes.json();
     if (!userRes.ok) throw new Error(JSON.stringify(discordUser));
   } catch (err) {
-    console.error('[auth] Discord user fetch error:', err.message);
+    console.error('[auth] Discord user error:', err.message);
     return res.status(502).json({ error: 'Could not fetch Discord profile.', detail: err.message });
   }
 
-  // 3. Get IP + timezone
-  const currentIp = getIp(req);
-  const timezone  = req.headers['x-timezone'] || 'unknown';
-
-  // 4. Appwrite — upsert user document
-  const db     = getDb();
-  const DB_ID  = process.env.APPWRITE_DB_ID;
-  const COL_ID = process.env.APPWRITE_COLLECTION_ID; // still called collectionId in the SDK
-
-  let locked = false;
+  var currentIp = getIp(req);
+  var timezone  = req.headers['x-timezone'] || 'unknown';
+  var db        = getDb();
+  var DB_ID     = process.env.APPWRITE_DB_ID;
+  var COL_ID    = process.env.APPWRITE_COLLECTION_ID;
+  var locked    = false;
+  var membership = 'default';
+  var isAdmin   = false;
 
   try {
-    // listDocuments(databaseId, collectionId, queries[])
-    const result = await db.listDocuments(DB_ID, COL_ID, [
+    var result = await db.listDocuments(DB_ID, COL_ID, [
       Query.equal('discord_id', discordUser.id),
     ]);
 
     if (result.total === 0) {
-      // New user
+      // New user — create record
       await db.createDocument(DB_ID, COL_ID, ID.unique(), {
         discord_id:       discordUser.id,
         discord_username: discordUser.username,
         discord_avatar:   discordUser.avatar  || '',
         email:            discordUser.email   || '',
-        phone:            '',
+        phone:            discordUser.phone   || '',
         original_ip:      currentIp,
         last_ip:          currentIp,
-        timezone,
+        timezone:         timezone,
         contributor:      false,
         membership:       'default',
+        is_admin:         false,
         locked:           false,
         tos_agreed:       true,
       });
 
     } else {
-      const doc = result.documents[0];
+      var doc = result.documents[0];
+      membership = doc.membership || 'default';
+      isAdmin    = doc.is_admin   || false;
 
       if (doc.locked) {
         locked = true;
 
+      } else if (isAdmin) {
+        // Admins — only update timezone, no IP tracking
+        await db.updateDocument(DB_ID, COL_ID, doc.$id, {
+          discord_username: discordUser.username,
+          discord_avatar:   discordUser.avatar || '',
+          email:            discordUser.email  || '',
+          timezone:         timezone,
+        });
+
       } else if (doc.original_ip && doc.original_ip !== 'unknown' && doc.original_ip !== currentIp) {
-        // IP changed from original — lock
+        // IP changed from original — lock account
         await db.updateDocument(DB_ID, COL_ID, doc.$id, {
           last_ip: currentIp,
           locked:  true,
         });
         locked = true;
-        console.warn(`[auth] IP change! ${discordUser.username} original=${doc.original_ip} current=${currentIp} LOCKED`);
+        console.warn('[auth] IP change! ' + discordUser.username +
+          ' original=' + doc.original_ip + ' current=' + currentIp + ' LOCKED');
 
       } else {
-        // Normal returning login
+        // Normal returning user
         await db.updateDocument(DB_ID, COL_ID, doc.$id, {
           last_ip:          currentIp,
           discord_username: discordUser.username,
           discord_avatar:   discordUser.avatar || '',
           email:            discordUser.email  || '',
-          timezone,
+          timezone:         timezone,
         });
       }
     }
   } catch (err) {
-    console.error('[auth] Appwrite error:', err.message, err.code, err.response);
-    return res.status(500).json({
-      error:  'Database operation failed.',
-      detail: err.message,
-      code:   err.code,
-    });
+    console.error('[auth] Appwrite error:', err.message, err.code);
+    return res.status(500).json({ error: 'Database operation failed.', detail: err.message, code: err.code });
   }
 
-  // 5. Set session cookie
-  const sessionToken = signSession({
-    id:       discordUser.id,
-    username: discordUser.username,
-    avatar:   discordUser.avatar || '',
-    locked,
-    ip:       currentIp,
-    iat:      Date.now(),
+  // Set session cookie
+  var sessionToken = signSession({
+    id:         discordUser.id,
+    username:   discordUser.username,
+    avatar:     discordUser.avatar || '',
+    locked:     locked,
+    membership: membership,
+    is_admin:   isAdmin,
+    ip:         isAdmin ? 'admin' : currentIp,
+    iat:        Date.now(),
   });
 
   res.setHeader('Set-Cookie',
-    `nc_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800; Secure`
+    'nc_session=' + sessionToken + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800; Secure'
   );
 
   return res.status(200).json({
-    id:       discordUser.id,
-    username: discordUser.username,
-    avatar:   discordUser.avatar || '',
-    locked,
+    id:         discordUser.id,
+    username:   discordUser.username,
+    avatar:     discordUser.avatar || '',
+    locked:     locked,
+    membership: membership,
+    is_admin:   isAdmin,
   });
 }
