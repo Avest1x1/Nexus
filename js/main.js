@@ -1,72 +1,73 @@
-/* ═══════════════════════════════════════════════════════
-   NEXUS COLLECTIVE — main.js
-   ═══════════════════════════════════════════════════════ */
-
+/* NEXUS COLLECTIVE - main.js */
 'use strict';
 
-/* ─── Cursor ───────────────────────────────────────────── */
+/* --- Cursor ------------------------------------------------
+   The bug was: lerp only ran inside mousemove, so when the
+   mouse stopped the rAF loop kept running but rx/ry never
+   updated toward a new target. Fix: store mx/my as targets,
+   lerp toward them every frame regardless of mouse movement. */
 (function initCursor() {
   const dot  = document.getElementById('cur-dot');
   const ring = document.getElementById('cur-ring');
   if (!dot || !ring) return;
 
+  let mx = 0, my = 0;
   let rx = 0, ry = 0;
 
-  document.addEventListener('mousemove', e => {
-    dot.style.left  = e.clientX + 'px';
-    dot.style.top   = e.clientY + 'px';
-    // ring lags behind
-    rx += (e.clientX - rx) * 0.14;
-    ry += (e.clientY - ry) * 0.14;
+  document.addEventListener('mousemove', function(e) {
+    mx = e.clientX;
+    my = e.clientY;
+    dot.style.left = mx + 'px';
+    dot.style.top  = my + 'px';
   }, { passive: true });
 
-  // Smoother ring using rAF
-  (function animRing() {
+  // Lerp ring toward mouse target every frame
+  // Even when mouse is still it finishes converging
+  (function loop() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
     ring.style.left = rx + 'px';
     ring.style.top  = ry + 'px';
-    requestAnimationFrame(animRing);
+    requestAnimationFrame(loop);
   })();
 
-  document.querySelectorAll('a, button, label, input, [role="button"]').forEach(el => {
-    el.addEventListener('mouseenter', () => document.body.classList.add('hov'));
-    el.addEventListener('mouseleave', () => document.body.classList.remove('hov'));
+  // Hover expand
+  document.querySelectorAll('a, button, label, input').forEach(function(el) {
+    el.addEventListener('mouseenter', function() { document.body.classList.add('hov'); });
+    el.addEventListener('mouseleave', function() { document.body.classList.remove('hov'); });
   });
 })();
 
-/* ─── Preloader ────────────────────────────────────────── */
-window.addEventListener('load', () => {
-  const pl = document.getElementById('preloader');
-  if (pl) {
-    setTimeout(() => pl.classList.add('done'), 250);
-  }
+/* --- Preloader --------------------------------------------- */
+window.addEventListener('load', function() {
+  var pl = document.getElementById('preloader');
+  if (pl) setTimeout(function() { pl.classList.add('done'); }, 250);
 });
 
-/* ─── Year ─────────────────────────────────────────────── */
-const yearEl = document.getElementById('year');
+/* --- Year -------------------------------------------------- */
+var yearEl = document.getElementById('year');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-/* ─── Session check on page load ───────────────────────── */
+/* --- Session check on load --------------------------------- */
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   setupScrollWatch();
 
-  // Fast path from sessionStorage
-  const cached = sessionStorage.getItem('nc_user');
+  var cached = sessionStorage.getItem('nc_user');
   if (cached) {
     try {
-      const u = JSON.parse(cached);
+      var u = JSON.parse(cached);
       if (u.locked) { showLocked(); return; }
       showUser(u);
-    } catch { /* fall through */ }
+    } catch(e) { /* fall through */ }
   }
 
-  // Always verify with server
   try {
-    const res = await fetch('/api/me', { credentials: 'include' });
+    var res = await fetch('/api/me', { credentials: 'include' });
     if (!res.ok) { sessionStorage.removeItem('nc_user'); return; }
 
-    const user = await res.json();
+    var user = await res.json();
     if (user.locked) {
       sessionStorage.removeItem('nc_user');
       showLocked();
@@ -75,66 +76,59 @@ async function init() {
 
     sessionStorage.setItem('nc_user', JSON.stringify(user));
     showUser(user);
-  } catch (err) {
+  } catch(err) {
     console.warn('[nexus] /api/me unreachable:', err.message);
   }
 }
 
-/* ─── Lock screen ──────────────────────────────────────── */
+/* --- Lock screen ------------------------------------------- */
 function showLocked() {
-  // Full lock: hide everything, show lock screen
-  const main = document.getElementById('hero');
-  if (main) main.style.display = 'none';
-  document.getElementById('lock-screen')?.classList.remove('hidden');
+  var hero = document.getElementById('hero');
+  if (hero) hero.style.display = 'none';
+  var ls = document.getElementById('lock-screen');
+  if (ls) ls.classList.remove('hidden');
 }
 
-/* ─── Show logged-in state ─────────────────────────────── */
+/* --- Show logged-in state ---------------------------------- */
 function showUser(user) {
-  // Hide guest buttons
-  const guestBtns = document.getElementById('hero-btns-guest');
+  var guestBtns = document.getElementById('hero-btns-guest');
   if (guestBtns) guestBtns.style.display = 'none';
 
-  // Show nav user info
-  const navUser = document.getElementById('nav-user');
+  var navUser = document.getElementById('nav-user');
   if (navUser) navUser.classList.remove('hidden');
 
-  const uname = document.getElementById('nav-uname');
+  var uname = document.getElementById('nav-uname');
   if (uname) uname.textContent = user.username;
 
-  // Set avatar
-  const img = document.getElementById('nav-avatar-img');
-  if (img) {
-    if (user.avatar) {
-      img.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
-      img.width  = 28;
-      img.height = 28;
-    }
-    // else keep default user icon
+  var img = document.getElementById('nav-avatar-img');
+  if (img && user.avatar) {
+    img.src    = 'https://cdn.discordapp.com/avatars/' + user.id + '/' + user.avatar + '.png?size=64';
+    img.width  = 28;
+    img.height = 28;
+    img.style.filter = 'none'; // real avatar - don't invert
   }
 
-  // Show appropriate notice based on membership
-  // We only have locked check here; membership detail comes from Appwrite
-  // For now show pending (default state after first login)
-  const pending  = document.getElementById('notice-pending');
+  var pending = document.getElementById('notice-pending');
   if (pending) pending.classList.remove('hidden');
 }
 
-/* ─── TOS page-transform ───────────────────────────────── */
+/* --- ToS page-transform ------------------------------------ */
 function openTos() {
-  const check = document.getElementById('agree-check');
+  var check = document.getElementById('agree-check');
   if (check) { check.checked = false; check.disabled = true; }
-  const btn = document.getElementById('btn-verify');
+  var btn = document.getElementById('btn-verify');
   if (btn) btn.disabled = true;
-  const hint = document.getElementById('tos-hint');
-  if (hint) { hint.textContent = '↓ scroll to accept'; hint.classList.remove('done'); }
+  var hint = document.getElementById('tos-hint');
+  if (hint) { hint.textContent = 'scroll to accept'; hint.classList.remove('done'); }
 
-  document.getElementById('tos-section')?.classList.remove('tos-hidden');
+  var sec = document.getElementById('tos-section');
+  if (sec) sec.classList.remove('tos-hidden');
   document.documentElement.classList.add('tos-open');
 
-  requestAnimationFrame(() => {
-    const sec = document.getElementById('tos-section');
-    if (sec) {
-      const y = sec.getBoundingClientRect().top + window.scrollY;
+  requestAnimationFrame(function() {
+    var s = document.getElementById('tos-section');
+    if (s) {
+      var y = s.getBoundingClientRect().top + window.scrollY;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
   });
@@ -142,46 +136,47 @@ function openTos() {
 
 function closeTos() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  setTimeout(() => {
+  setTimeout(function() {
     document.documentElement.classList.remove('tos-open');
-    setTimeout(() => {
-      document.getElementById('tos-section')?.classList.add('tos-hidden');
+    setTimeout(function() {
+      var sec = document.getElementById('tos-section');
+      if (sec) sec.classList.add('tos-hidden');
     }, 450);
   }, 300);
 }
 
-/* ─── Scroll watch to unlock checkbox ─────────────────── */
+/* --- Scroll watch to unlock checkbox ----------------------- */
 function setupScrollWatch() {
-  let unlocked = false;
-  window.addEventListener('scroll', () => {
+  var unlocked = false;
+  window.addEventListener('scroll', function() {
     if (unlocked) return;
-    const bar = document.getElementById('tos-accept');
+    var bar = document.getElementById('tos-accept');
     if (!bar) return;
-    const rect = bar.getBoundingClientRect();
+    var rect = bar.getBoundingClientRect();
     if (rect.top < window.innerHeight - 30) {
       unlocked = true;
-      const check = document.getElementById('agree-check');
+      var check = document.getElementById('agree-check');
       if (check) check.disabled = false;
-      const hint = document.getElementById('tos-hint');
-      if (hint) { hint.textContent = '✓ you may now accept'; hint.classList.add('done'); }
+      var hint = document.getElementById('tos-hint');
+      if (hint) { hint.textContent = 'you may now accept'; hint.classList.add('done'); }
     }
   }, { passive: true });
 }
 
-/* ─── Checkbox ─────────────────────────────────────────── */
+/* --- Checkbox ---------------------------------------------- */
 function onCheck(checkbox) {
-  const btn = document.getElementById('btn-verify');
+  var btn = document.getElementById('btn-verify');
   if (btn) btn.disabled = !checkbox.checked;
 }
 
-/* ─── Discord auth ─────────────────────────────────────── */
+/* --- Discord auth ------------------------------------------ */
 function startDiscordAuth() {
   window.location.href = '/api/auth-redirect';
 }
 
-/* ─── Logout ───────────────────────────────────────────── */
+/* --- Logout ------------------------------------------------ */
 async function logout() {
   sessionStorage.removeItem('nc_user');
-  try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch {}
+  try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
   window.location.reload();
 }

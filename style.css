@@ -193,7 +193,7 @@ body.hov #cur-dot  { transform: translate(-50%, -50%) scale(1.4); }
   overflow: hidden;
 }
 
-.nav-avatar img {
+.nav-avatar img.default-icon {
   width: 28px; height: 28px;
   object-fit: cover;
 }
@@ -646,3 +646,8 @@ html.tos-open #tos-section {
   .tos-body { padding: 32px 16px 60px; }
   .tos-accept { flex-direction: column; align-items: flex-start; }
 }
+
+/* White SVG icons */
+.nav-avatar img.default-icon { filter: brightness(0) invert(1); opacity: 0.55; }
+.btn-discord img              { filter: brightness(0) invert(1); }
+.btn-about img                { filter: brightness(0) invert(1); opacity: 0.7; }

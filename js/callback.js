@@ -1,57 +1,51 @@
-/* ═══════════════════════════════════════════════════
-   NEXUS COLLECTIVE — callback.js
-   Runs on /callback.html after Discord OAuth redirect.
-   Sends the ?code= to /api/auth, reads the result,
-   stores safe data, then redirects home.
-   ═══════════════════════════════════════════════════ */
+/* NEXUS COLLECTIVE - callback.js
+   Runs on /callback.html after Discord sends the user back.
+   Grabs the ?code= param, hits /api/auth, then redirects home. */
 
 'use strict';
 
-const params  = new URLSearchParams(window.location.search);
-const code    = params.get('code');
-const error   = params.get('error');
+var titleEl  = document.getElementById('cb-title');
+var subEl    = document.getElementById('cb-sub');
+var spinner  = document.getElementById('cb-spinner');
 
-const msgEl   = document.getElementById('status-msg');
-const subEl   = document.getElementById('status-sub');
-const spinner = document.getElementById('spinner');
+var params = new URLSearchParams(window.location.search);
+var code   = params.get('code');
+var error  = params.get('error');
 
 (async function run() {
 
-  /* Discord declined / user cancelled */
   if (error) {
-    setStatus('CANCELLED', 'You declined the authorization request.', true);
-    redirectHome(2500);
+    setStatus('CANCELLED', 'You declined the request.', true);
+    redirectHome(2000);
     return;
   }
 
   if (!code) {
-    setStatus('ERROR', 'No authorization code found.', true);
-    redirectHome(2500);
+    setStatus('ERROR', 'No auth code found.', true);
+    redirectHome(2000);
     return;
   }
 
-  /* Exchange code for session via serverless function */
   try {
-    const res  = await fetch(`/api/auth?code=${encodeURIComponent(code)}`, {
+    var res  = await fetch('/api/auth?code=' + encodeURIComponent(code), {
       credentials: 'include',
     });
-    const data = await res.json();
+    var data = await res.json();
 
     if (!res.ok) {
-      setStatus('FAILED', data.error || 'Authentication error.', true);
+      setStatus('FAILED', data.error || 'Auth error.', true);
       redirectHome(3000);
       return;
     }
 
     if (data.locked) {
-      /* Locked account — don't store any data, redirect to lock screen */
       sessionStorage.setItem('nc_locked', '1');
-      setStatus('LOCKED', 'IP change detected. Account suspended.', true);
+      setStatus('LOCKED', 'IP change detected. Contact an admin.', true);
       redirectHome(2500);
       return;
     }
 
-    /* Store safe non-sensitive data for instant UI render */
+    // Store safe data so index.html renders instantly
     sessionStorage.setItem('nc_user', JSON.stringify({
       id:       data.id,
       username: data.username,
@@ -59,31 +53,30 @@ const spinner = document.getElementById('spinner');
       locked:   false,
     }));
 
-    setStatus('VERIFIED', `Welcome, ${data.username}`, false);
-    redirectHome(1500);
+    setStatus('VERIFIED', 'Welcome, ' + data.username, false);
+    redirectHome(1200);
 
   } catch (err) {
-    console.error(err);
-    setStatus('ERROR', 'Could not reach the server.', true);
+    console.error('[callback]', err);
+    setStatus('ERROR', 'Could not reach server.', true);
     redirectHome(3000);
   }
+
 })();
 
-/* ── Helpers ──────────────────────────────────────── */
 function setStatus(title, sub, isError) {
-  msgEl.textContent = title;
-  subEl.textContent = sub;
-  if (isError) {
-    msgEl.style.color = '#ff4444';
-    spinner.style.borderTopColor = '#ff4444';
-    spinner.style.filter = 'drop-shadow(0 0 8px rgba(255,68,68,0.5))';
-  } else {
-    msgEl.style.color = 'var(--purple)';
+  if (titleEl) {
+    titleEl.textContent = title;
+    titleEl.style.color = isError ? '#ff4f6b' : '#d44fff';
+  }
+  if (subEl) subEl.textContent = sub;
+  if (spinner && isError) {
+    spinner.style.borderTopColor = '#ff4f6b';
   }
 }
 
 function redirectHome(delay) {
-  setTimeout(() => {
+  setTimeout(function() {
     window.location.href = '/';
   }, delay);
 }
