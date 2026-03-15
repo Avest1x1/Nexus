@@ -251,7 +251,6 @@ async function openAssetModal(assetId) {
 function renderAssetModal(asset) {
   // background
   var bg = document.getElementById('modal-bg');
-  if (bg) {
   if (bg) bg.classList.add('hidden');
 
   // section badge
@@ -687,10 +686,14 @@ function initVaultSecurity() {
     else hideLeak();
   });
 
-  // Window focus loss
-  window.addEventListener('blur', showLeak);
+  // Window focus loss — debounced so DevTools / address bar don't trigger it
+  var _blurTimer = null;
+  window.addEventListener('blur', function() {
+    _blurTimer = setTimeout(showLeak, 800);
+  });
   window.addEventListener('focus', function() {
-    setTimeout(hideLeak, 600);
+    clearTimeout(_blurTimer);
+    hideLeak();
   });
 
   // PrintScreen key — best-effort, not reliable on all OS
