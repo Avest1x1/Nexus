@@ -117,11 +117,17 @@
               <span class="admin-member-count" id="admin-member-count"></span>
             </div>
             <div class="admin-card-sub">
-              Full read/write access active. IP and timezone are passive logs.
+              Full read/write access. IP and timezone are passive logs.
               Only the platform owner can modify administrator status.
             </div>
+            <div class="admin-tabs">
+              <button class="admin-tab active" id="tab-members" onclick="switchAdminTab('members')">MEMBERS</button>
+              <button class="admin-tab" id="tab-assets"  onclick="switchAdminTab('assets')">ASSETS &amp; VIEWERS</button>
+            </div>
           </div>
-          <div class="admin-table-wrap">
+
+          <!-- Members table -->
+          <div class="admin-table-wrap" id="admin-view-members">
             <table class="admin-table">
               <thead>
                 <tr>
@@ -133,11 +139,34 @@
                   <th>LAST IP</th>
                   <th>TIMEZONE</th>
                   <th>ADMIN</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="admin-tbody"></tbody>
             </table>
           </div>
+
+          <!-- Assets table -->
+          <div class="admin-table-wrap hidden" id="admin-view-assets">
+            <div class="admin-assets-loading" id="admin-assets-loading">
+              <div class="admin-check-ring"></div>
+            </div>
+            <table class="admin-table hidden" id="admin-assets-table">
+              <thead>
+                <tr>
+                  <th>TITLE</th>
+                  <th>SECTION</th>
+                  <th>POSTED BY</th>
+                  <th>POSTED</th>
+                  <th>VIEWS</th>
+                  <th>MEGA CLICKS</th>
+                  <th>VIEWERS</th>
+                </tr>
+              </thead>
+              <tbody id="admin-assets-tbody"></tbody>
+            </table>
+          </div>
+
         </div>
 
       </div>

@@ -15,7 +15,8 @@ var TIERS = [
 ];
 
 // The viewer's discord_id — set once profile loads, used by dashboard
-var _viewerId = null;
+var _viewerId    = null;
+var _assetsLoaded = false; // lazy-load assets tab only when first opened
 
 /* ====================================================
    BOOT
@@ -169,13 +170,11 @@ function renderTierTrack(current) {
    ADMIN DASHBOARD
    ==================================================== */
 
-// spinner fades out, then the full card scales in from the bottom
 async function loadDashboard() {
   try {
-    var res = await fetch('/api/admin-users', { credentials: 'include' });
+    var res  = await fetch('/api/admin-users?view=users', { credentials: 'include' });
     if (!res.ok) { fadeOutAdminCheck(); return; }
     var data = await res.json();
-
     fadeOutAdminCheck(function() {
       renderDashboard(data.users || []);
     });
@@ -203,16 +202,193 @@ function renderDashboard(users) {
   var tbody = document.getElementById('admin-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
+  users.forEach(function(user) { tbody.appendChild(makeRow(user)); });
 
-  users.forEach(function(user) {
-    tbody.appendChild(makeRow(user));
-  });
-
-  // scale the card in from the bottom
   var card = document.getElementById('admin-card');
   if (!card) return;
   card.classList.remove('hidden');
   card.classList.add('admin-card-enter');
+}
+
+/* ── Tab switching ──────────────────────────────── */
+function switchAdminTab(tab) {
+  document.querySelectorAll('.admin-tab').forEach(function(btn) {
+    btn.classList.toggle('active', btn.id === 'tab-' + tab);
+  });
+
+  var memberView = document.getElementById('admin-view-members');
+  var assetView  = document.getElementById('admin-view-assets');
+
+  if (tab === 'members') {
+    if (memberView) memberView.classList.remove('hidden');
+    if (assetView)  assetView.classList.add('hidden');
+  } else {
+    if (memberView) memberView.classList.add('hidden');
+    if (assetView)  assetView.classList.remove('hidden');
+    if (!_assetsLoaded) loadAssetsTab();
+  }
+}
+
+async function loadAssetsTab() {
+  _assetsLoaded = true;
+  try {
+    var res  = await fetch('/api/admin-users?view=assets', { credentials: 'include' });
+    if (!res.ok) return;
+    var data = await res.json();
+    renderAssetsTab(data.assets || []);
+  } catch (err) {
+    console.warn('[nexus/admin] assets fetch failed:', err.message);
+  }
+}
+
+function renderAssetsTab(assets) {
+  var loading = document.getElementById('admin-assets-loading');
+  var table   = document.getElementById('admin-assets-table');
+  var tbody   = document.getElementById('admin-assets-tbody');
+  if (!tbody) return;
+
+  if (loading) loading.style.display = 'none';
+  if (table)   table.classList.remove('hidden');
+
+  tbody.innerHTML = '';
+
+  if (assets.length === 0) {
+    var tr = document.createElement('tr');
+    var td = document.createElement('td');
+    td.colSpan = 7;
+    td.className = 'adm-dim';
+    td.style.padding = '24px';
+    td.style.textAlign = 'center';
+    td.textContent = 'No assets posted yet.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+
+  assets.forEach(function(asset) {
+    // Main asset row
+    var tr = document.createElement('tr');
+    tr.className = 'adm-asset-row';
+    tr.style.cursor = asset.viewers.length > 0 ? 'pointer' : 'default';
+
+    var SECTION_COLORS = { community: 'var(--green)', contributor: 'var(--accent)', official: 'var(--blue)' };
+
+    var tdTitle = document.createElement('td');
+    tdTitle.className = 'adm-username';
+    tdTitle.textContent = asset.title;
+    tr.appendChild(tdTitle);
+
+    var tdSec = document.createElement('td');
+    tdSec.style.color = SECTION_COLORS[asset.section] || 'var(--dim)';
+    tdSec.style.fontSize = '10px';
+    tdSec.style.letterSpacing = '0.1em';
+    tdSec.style.textTransform = 'uppercase';
+    tdSec.textContent = asset.section;
+    tr.appendChild(tdSec);
+
+    var tdBy = document.createElement('td');
+    tdBy.className = 'adm-dim';
+    tdBy.textContent = asset.created_by_name;
+    tr.appendChild(tdBy);
+
+    var tdDate = document.createElement('td');
+    tdDate.className = 'adm-dim';
+    tdDate.textContent = asset.created_at ? new Date(asset.created_at).toLocaleDateString() : '--';
+    tr.appendChild(tdDate);
+
+    var tdViews = document.createElement('td');
+    tdViews.style.color = asset.view_count > 0 ? 'var(--text)' : 'var(--muted)';
+    tdViews.style.fontWeight = '500';
+    tdViews.textContent = asset.view_count;
+    tr.appendChild(tdViews);
+
+    var tdMega = document.createElement('td');
+    tdMega.style.color = asset.mega_clicks > 0 ? 'var(--accent)' : 'var(--muted)';
+    tdMega.style.fontWeight = asset.mega_clicks > 0 ? '700' : '400';
+    tdMega.textContent = asset.mega_clicks;
+    tr.appendChild(tdMega);
+
+    var tdExpand = document.createElement('td');
+    if (asset.viewers.length > 0) {
+      var expandBtn = document.createElement('button');
+      expandBtn.className = 'adm-expand-btn';
+      expandBtn.textContent = 'show viewers';
+      expandBtn.setAttribute('data-expanded', 'false');
+      tr.appendChild(tdExpand);
+      tdExpand.appendChild(expandBtn);
+
+      // Viewers sub-row (hidden by default)
+      var subTr = document.createElement('tr');
+      subTr.className = 'adm-viewer-subrow hidden';
+      var subTd = document.createElement('td');
+      subTd.colSpan = 7;
+      subTd.className = 'adm-viewer-subtd';
+
+      var subTable = document.createElement('table');
+      subTable.className = 'adm-viewer-table';
+
+      var thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>VIEWER</th><th>OPENED MEGA</th><th>VIEWED AT</th><th>USER AGENT</th></tr>';
+      subTable.appendChild(thead);
+
+      var stbody = document.createElement('tbody');
+      asset.viewers.forEach(function(v) {
+        var vtr = document.createElement('tr');
+
+        var vtdName = document.createElement('td');
+        vtdName.className = 'adm-username';
+        vtdName.textContent = v.viewer_name;
+        vtr.appendChild(vtdName);
+
+        var vtdMega = document.createElement('td');
+        vtdMega.style.color = v.opened_mega ? 'var(--accent)' : 'var(--muted)';
+        vtdMega.style.fontWeight = v.opened_mega ? '700' : '400';
+        vtdMega.textContent = v.opened_mega ? 'YES' : 'no';
+        vtr.appendChild(vtdMega);
+
+        var vtdDate = document.createElement('td');
+        vtdDate.className = 'adm-dim adm-mono';
+        vtdDate.style.fontSize = '10px';
+        vtdDate.textContent = v.viewed_at ? new Date(v.viewed_at).toLocaleString() : '--';
+        vtr.appendChild(vtdDate);
+
+        var vtdUa = document.createElement('td');
+        vtdUa.className = 'adm-dim';
+        vtdUa.style.fontSize = '9.5px';
+        vtdUa.style.maxWidth = '260px';
+        vtdUa.style.overflow = 'hidden';
+        vtdUa.style.textOverflow = 'ellipsis';
+        vtdUa.style.whiteSpace = 'nowrap';
+        vtdUa.textContent = v.user_agent || '--';
+        vtr.appendChild(vtdUa);
+
+        stbody.appendChild(vtr);
+      });
+
+      subTable.appendChild(stbody);
+      subTd.appendChild(subTable);
+      subTr.appendChild(subTd);
+      tbody.appendChild(tr);
+      tbody.appendChild(subTr);
+
+      // Toggle on button click or row click
+      function toggleViewers() {
+        var expanded = expandBtn.getAttribute('data-expanded') === 'true';
+        expandBtn.setAttribute('data-expanded', expanded ? 'false' : 'true');
+        expandBtn.textContent = expanded ? 'show viewers' : 'hide viewers';
+        subTr.classList.toggle('hidden', expanded);
+      }
+      expandBtn.addEventListener('click', function(e) { e.stopPropagation(); toggleViewers(); });
+      tr.addEventListener('click', toggleViewers);
+
+    } else {
+      tdExpand.className = 'adm-dim';
+      tdExpand.style.fontSize = '10px';
+      tdExpand.textContent = 'no viewers yet';
+      tr.appendChild(tdExpand);
+      tbody.appendChild(tr);
+    }
+  });
 }
 
 function makeRow(user) {
