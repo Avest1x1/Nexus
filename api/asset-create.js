@@ -1,7 +1,7 @@
 // api/asset-create.js
 // Creates a new asset. Section-based permission check.
-// mega_link must be a mega.nz URL.
-// mega_key must start with nexuscollective_
+// mega_link is required and must be a mega.nz URL.
+// mega_key is optional — raw key from MEGA, no prefix required.
 
 import { Client, Databases, ID, Query } from 'node-appwrite';
 import crypto from 'crypto';
@@ -89,12 +89,13 @@ export default async function handler(req, res) {
   if (description.length > 4096) {
     return res.status(400).json({ error: 'Description too long (max 4096 characters).' });
   }
-  if (mega_link && !mega_link.startsWith('https://mega.nz/')) {
+  if (!mega_link) {
+    return res.status(400).json({ error: 'A MEGA.NZ download link is required.' });
+  }
+  if (!mega_link.startsWith('https://mega.nz/')) {
     return res.status(400).json({ error: 'Download link must be a mega.nz URL.' });
   }
-  if (mega_key && !mega_key.startsWith('nexuscollective_')) {
-    return res.status(400).json({ error: 'Encryption key must start with nexuscollective_' });
-  }
+  // mega_key is optional — no format requirement, paste it as-is from MEGA
   if (!Array.isArray(external_links) || external_links.length > 6) {
     return res.status(400).json({ error: 'External links: max 6.' });
   }

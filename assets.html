@@ -102,13 +102,14 @@
         </div>
 
         <div class="cf-row">
-          <label class="cf-label">MEGA.NZ LINK <span class="cf-opt">optional</span></label>
-          <input class="cf-input" id="cf-mega" type="text" placeholder="https://mega.nz/file/...">
+          <label class="cf-label">MEGA.NZ LINK <span class="cf-req">required</span></label>
+          <input class="cf-input" id="cf-mega" type="text" placeholder="https://mega.nz/file/XXXXXXXX">
         </div>
 
         <div class="cf-row">
-          <label class="cf-label">ENCRYPTION KEY <span class="cf-opt">optional · must start with nexuscollective_</span></label>
-          <input class="cf-input cf-mono" id="cf-key" type="text" placeholder="nexuscollective_...">
+          <label class="cf-label">DECRYPTION KEY <span class="cf-opt">optional · paste as-is from MEGA</span></label>
+          <div class="cf-key-hint">Copy the key from MEGA's share dialog (e.g. <span class="cf-key-example">OijObMd2eHHqEnNxv2yoc...</span>) and paste it here. Leave blank if you want MEGA to handle it via the link.</div>
+          <input class="cf-input cf-mono" id="cf-key" type="text" placeholder="Paste raw decryption key from MEGA...">
         </div>
 
         <div class="cf-row">

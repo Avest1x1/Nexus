@@ -2008,3 +2008,16 @@ body.modal-open { overflow: hidden; }
 }
 .adm-viewer-table tbody tr:last-child { border-bottom: none; }
 .adm-viewer-table tbody td { padding: 9px 16px; vertical-align: middle; }
+
+/* ── Mega key hint ────────────────────────────────── */
+.cf-key-hint {
+  font-size: 10px; color: var(--muted); line-height: 1.7;
+  padding: 8px 12px;
+  border: 1px solid rgba(212,79,255,0.1);
+  background: rgba(212,79,255,0.03);
+  margin-bottom: 6px;
+}
+.cf-key-example {
+  font-family: var(--font-m); color: var(--dim);
+  letter-spacing: 0.02em;
+}
