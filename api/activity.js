@@ -1,23 +1,18 @@
 // api/activity.js
-// Called silently from any non-index page (profile, assets, etc.)
-// when a logged-in user is active. Updates last_ip and timezone in the DB
-// without triggering any locking logic — that stays in auth.js and me.js.
-// If there's no session, it just returns 204 silently.
+// Passive activity ping — updates last_ip + timezone on non-index page visits.
+// Also handles mega.nz click tracking when body contains { assetId, action:'mega' }.
+// No new serverless function needed — folded into this existing endpoint.
 
 import { Client, Databases, Query } from 'node-appwrite';
 import crypto from 'crypto';
 
 function verifySession(token) {
   try {
-    var parts   = token.split('.');
-    var payload = parts[0];
-    var sig     = parts[1];
-    var expected = crypto
-      .createHmac('sha256', process.env.SESSION_SECRET)
-      .update(payload)
-      .digest('base64url');
-    if (sig !== expected) return null;
-    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    var parts    = token.split('.');
+    var expected = crypto.createHmac('sha256', process.env.SESSION_SECRET)
+      .update(parts[0]).digest('base64url');
+    if (parts[1] !== expected) return null;
+    return JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
   } catch (e) { return null; }
 }
 
@@ -41,11 +36,10 @@ function getIp(req) {
 }
 
 function getDb() {
-  var client = new Client()
+  return new Databases(new Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1')
     .setProject(process.env.APPWRITE_PROJECT_ID)
-    .setKey(process.env.APPWRITE_API_KEY);
-  return new Databases(client);
+    .setKey(process.env.APPWRITE_API_KEY));
 }
 
 export default async function handler(req, res) {
@@ -53,50 +47,62 @@ export default async function handler(req, res) {
 
   var cookies = parseCookies(req.headers.cookie);
   var token   = cookies['nc_session'];
-
-  // No session = not logged in, just bail silently
   if (!token) return res.status(204).end();
 
   var session = verifySession(token);
   if (!session || session.locked) return res.status(204).end();
 
+  var body      = req.body || {};
+  var megaClick = body.action === 'mega' && body.assetId;
   var currentIp = getIp(req);
   var timezone  = req.headers['x-timezone'] || '';
 
-  // Nothing useful to record, skip the DB write
-  if (currentIp === 'unknown' && !timezone) return res.status(204).end();
+  var db        = getDb();
+  var DB_ID     = process.env.APPWRITE_DB_ID;
+  var USERS_COL = process.env.APPWRITE_COLLECTION_ID;
+  var VIEWS_COL = process.env.APPWRITE_VIEWS_COL_ID || '';
 
   try {
-    var db    = getDb();
-    var DB_ID = process.env.APPWRITE_DB_ID;
-    var COL   = process.env.APPWRITE_COLLECTION_ID;
-
-    var result = await db.listDocuments(DB_ID, COL, [
+    var result = await db.listDocuments(DB_ID, USERS_COL, [
       Query.equal('discord_id', session.id),
     ]);
-
     if (result.total === 0) return res.status(204).end();
 
     var doc    = result.documents[0];
     var update = {};
 
-    // admins never get their real IP logged
     var recordedIp = doc.is_admin ? 'i love girls' : currentIp;
-
     if (recordedIp !== 'unknown') update.last_ip  = recordedIp;
     if (timezone)                 update.timezone = timezone;
 
-    // Only write if something actually changed — skip useless DB ops
     var changed =
       (update.last_ip  && update.last_ip  !== doc.last_ip)  ||
       (update.timezone && update.timezone !== doc.timezone);
 
     if (changed) {
-      await db.updateDocument(DB_ID, COL, doc.$id, update);
+      await db.updateDocument(DB_ID, USERS_COL, doc.$id, update);
+    }
+
+    // Mega click tracking — mark opened_mega=true on the view record
+    if (megaClick && VIEWS_COL) {
+      try {
+        var viewResult = await db.listDocuments(DB_ID, VIEWS_COL, [
+          Query.equal('asset_id',  body.assetId),
+          Query.equal('viewer_id', doc.discord_id),
+          Query.limit(1),
+        ]);
+        if (viewResult.total > 0 && !viewResult.documents[0].opened_mega) {
+          await db.updateDocument(DB_ID, VIEWS_COL, viewResult.documents[0].$id, {
+            opened_mega: true,
+          });
+          console.log('[activity] mega click: ' + doc.discord_username + ' -> ' + body.assetId);
+        }
+      } catch (err) {
+        console.warn('[activity] mega click tracking failed:', err.message);
+      }
     }
 
   } catch (err) {
-    // Never crash the page over an activity ping
     console.warn('[activity] DB update skipped:', err.message);
   }
 

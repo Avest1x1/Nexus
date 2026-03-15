@@ -241,19 +241,21 @@
       <div class="tos-block">
         <div class="tos-num">02</div>
         <div class="tos-content">
-          <h3>Data Collection, IP Logging &amp; Consent</h3>
-          <p>By proceeding with Discord authentication, you <strong>expressly and irrevocably consent</strong> to the collection, storage, and processing of the following personal data:</p>
+          <h3>Data Collection, Tracking &amp; Consent</h3>
+          <p>By proceeding with Discord authentication, you <strong>expressly and irrevocably consent</strong> to the following data being collected, stored, and retained permanently or for a minimum of 24 months:</p>
           <ul class="tos-list">
-            <li>Your Discord username, user ID, and associated email address</li>
-            <li>Your public IP address, recorded at the time of first registration</li>
-            <li>Your IP address on every subsequent login session</li>
-            <li>Your device timezone and approximate geographic region</li>
-            <li>Your phone number if provided to and shared by Discord's OAuth API</li>
-            <li>Timestamps of all login events, session durations, and access logs</li>
+            <li><strong>Identity:</strong> Your Discord user ID, username, and avatar</li>
+            <li><strong>Contact:</strong> Your email address provided via Discord OAuth</li>
+            <li><strong>Network:</strong> Your IP address at registration, your most recent IP address, and all IP addresses observed during active sessions or page visits. If your IP changes from registration, your account is automatically locked pending admin review.</li>
+            <li><strong>Location signal:</strong> Your browser timezone, updated passively on every non-landing page visit</li>
+            <li><strong>Session cookie:</strong> A signed <code>nc_session</code> cookie stored in your browser for up to 7 days containing your user ID, membership tier, admin status, and login-time IP. Tampering with this cookie invalidates your session.</li>
+            <li><strong>Asset access logs:</strong> Every asset you open is permanently logged with your Discord ID, username, browser user-agent string, and timestamp. These records are visible to administrators and cannot be deleted by users.</li>
+            <li><strong>Download tracking:</strong> If you click any MEGA.NZ download link inside an asset, that action is permanently and irrevocably logged against your account, the asset ID, and a timestamp. This is used to identify the source of any leaked material.</li>
+            <li><strong>Browser fingerprint:</strong> Your browser user-agent string is recorded at every asset access event.</li>
+            <li><strong>Activity timestamps:</strong> The time you last visited any authenticated page is updated on each visit.</li>
           </ul>
-          <p>IP address data is used for <strong>security verification and identity continuity</strong>. If your IP changes from the value recorded at registration, your account will be automatically suspended pending administrator review. This is non-negotiable. There are no exceptions.</p>
-          <p>This data is never sold, shared with third parties, or used for advertising. It is retained for security, dispute resolution, and legal compliance for as long as your account exists, and for a minimum of 24 months following account termination.</p>
-          <p class="tos-notice">Note: Discord's OAuth2 API does not expose phone numbers by default regardless of scope. If your number was not recorded this is expected behavior from Discord, not a platform error.</p>
+          <p>This data is stored in Appwrite Cloud (Frankfurt, Germany) and is accessible only to Nexus Collective administrators. It is never sold or shared with third parties.</p>
+          <p class="tos-notice">All tracking data is used exclusively for security, leak attribution, and account management. If leaked material is traced back to your access log, that record constitutes evidence and may be used in a formal dispute or legal proceeding.</p>
         </div>
       </div>
 

@@ -40,7 +40,6 @@ function showVaultError(msg) {
 
 async function bootVault() {
   pingActivity();
-  initVaultSecurity();
 
   try {
     var res  = await fetch('/api/assets-list', { credentials: 'include' });
@@ -247,7 +246,17 @@ function makeCard(card) {
   // footer
   var footer = document.createElement('div');
   footer.className = 'vault-card-footer';
-  footer.textContent = card.created_by_name;
+
+  var authorSpan = document.createElement('span');
+  authorSpan.textContent = card.created_by_name;
+  footer.appendChild(authorSpan);
+
+  if (card.view_count > 0) {
+    var viewSpan = document.createElement('span');
+    viewSpan.className = 'vault-card-views';
+    viewSpan.textContent = card.view_count + ' view' + (card.view_count !== 1 ? 's' : '');
+    footer.appendChild(viewSpan);
+  }
 
   // lock icon for inaccessible cards
   if (!canAccess) {
@@ -380,6 +389,16 @@ function renderAssetModal(asset) {
       openBtn.target     = '_blank';
       openBtn.rel        = 'noopener noreferrer';
       openBtn.textContent = 'OPEN IN MEGA';
+      openBtn.addEventListener('click', function() {
+        // Fire mega click tracking — baked into activity endpoint
+        var tz = (Intl && Intl.DateTimeFormat)
+          ? Intl.DateTimeFormat().resolvedOptions().timeZone || '' : '';
+        fetch('/api/activity', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'x-timezone': tz },
+          body: JSON.stringify({ assetId: asset.id, action: 'mega' }),
+        }).catch(function() {});
+      });
       megaRow.appendChild(openBtn);
 
       if (asset.mega_key) {
@@ -403,6 +422,48 @@ function renderAssetModal(asset) {
       megaWrap.classList.remove('hidden');
     } else {
       megaWrap.classList.add('hidden');
+    }
+  }
+
+  // view count
+  var meta = document.getElementById('modal-meta');
+  if (meta) {
+    var countTxt = asset.view_count
+      ? asset.view_count + ' unique view' + (asset.view_count !== 1 ? 's' : '')
+      : 'no views yet';
+    meta.textContent = (SECTION_META[asset.section] || {}).label + '  —  ' + countTxt;
+  }
+
+  // Admin viewer list
+  var viewerWrap = document.getElementById('modal-viewers');
+  if (viewerWrap) {
+    if (asset.viewer_list && asset.viewer_list.length > 0) {
+      viewerWrap.innerHTML = '<div class="modal-links-label">VIEWED BY</div>';
+      asset.viewer_list.forEach(function(v) {
+        var row = document.createElement('div');
+        row.className = 'modal-viewer-row';
+        var nameEl = document.createElement('span');
+        nameEl.className = 'modal-viewer-name';
+        nameEl.textContent = v.viewer_name;
+        var flags = document.createElement('span');
+        flags.className = 'modal-viewer-flags';
+        if (v.opened_mega) {
+          var megaFlag = document.createElement('span');
+          megaFlag.className = 'modal-viewer-flag mega';
+          megaFlag.textContent = 'OPENED MEGA';
+          flags.appendChild(megaFlag);
+        }
+        var ua = document.createElement('span');
+        ua.className = 'modal-viewer-ua';
+        ua.textContent = v.user_agent ? v.user_agent.split(' ')[0] : '';
+        row.appendChild(nameEl);
+        row.appendChild(flags);
+        row.appendChild(ua);
+        viewerWrap.appendChild(row);
+      });
+      viewerWrap.classList.remove('hidden');
+    } else {
+      viewerWrap.classList.add('hidden');
     }
   }
 
@@ -713,56 +774,6 @@ function buildCodeBlock(code) {
   return wrap;
 }
 
-/* ====================================================
-   VAULT SECURITY
-   Anti-screencap, copy protection, context menu block
-   ==================================================== */
-function initVaultSecurity() {
-  var leakShown = false;
-
-  function showLeak() {
-    if (leakShown) return;
-    leakShown = true;
-    show('leak-overlay');
-  }
-
-  function hideLeak() {
-    leakShown = false;
-    hide('leak-overlay');
-  }
-
-  // Tab switch / window minimize
-  document.addEventListener('visibilitychange', function() {
-    if (document.hidden) showLeak();
-    else hideLeak();
-  });
-
-  // No blur listener — causes lag and false positives
-
-  // PrintScreen key — best-effort, not reliable on all OS
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'PrintScreen') {
-      showLeak();
-      // Overwrite clipboard with a warning — not guaranteed but worth trying
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText('[Nexus Collective] Screenshot attempt logged.').catch(function() {});
-      }
-    }
-  });
-
-  // Dismiss leak overlay on click
-  var overlay = document.getElementById('leak-overlay');
-  if (overlay) overlay.addEventListener('click', hideLeak);
-
-  // Block copy events everywhere except .allow-copy elements
-  document.addEventListener('copy', function(e) {
-    if (!e.target.closest('.allow-copy')) e.preventDefault();
-  });
-
-  // Block right-click within the asset modal
-  var modal = document.getElementById('asset-modal');
-  if (modal) modal.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-}
 
 /* ====================================================
    HELPERS
