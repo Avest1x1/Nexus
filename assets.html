@@ -15,7 +15,7 @@
   <div id="cur-ring"></div>
   <canvas id="bg-canvas"></canvas>
 
-  <!-- LEAK OVERLAY — shown on tab-out, blur, or PrintScreen -->
+  <!-- LEAK OVERLAY -->
   <div class="leak-overlay hidden" id="leak-overlay">
     <div class="leak-card">
       <div class="leak-icon">
@@ -41,7 +41,7 @@
           </button>
           <div class="asset-modal-menu hidden" id="modal-menu">
             <button class="asset-modal-menu-item takedown" id="modal-takedown-btn" onclick="deleteCurrentAsset()">Take down</button>
-            <button class="asset-modal-menu-item delete" id="modal-delete-btn" onclick="deleteCurrentAsset()">Delete post</button>
+            <button class="asset-modal-menu-item delete"   id="modal-delete-btn"   onclick="deleteCurrentAsset()">Delete post</button>
           </div>
           <button class="asset-modal-close" onclick="closeAssetModal()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -49,16 +49,15 @@
         </div>
       </div>
       <div class="asset-modal-scroll">
-        <div class="asset-modal-bg hidden" id="modal-bg"></div>
         <div class="asset-modal-body">
-          <div class="asset-modal-meta" id="modal-meta"></div>
-          <div class="asset-modal-title" id="modal-title"></div>
+          <div class="asset-modal-meta"   id="modal-meta"></div>
+          <div class="asset-modal-title"  id="modal-title"></div>
           <div class="asset-modal-author" id="modal-author"></div>
           <div class="asset-modal-divider"></div>
-          <div class="asset-modal-desc" id="modal-desc"></div>
-          <div class="asset-modal-code hidden" id="modal-code"></div>
+          <div class="asset-modal-desc"   id="modal-desc"></div>
+          <div class="asset-modal-code hidden"  id="modal-code"></div>
           <div class="asset-modal-links hidden" id="modal-links"></div>
-          <div class="asset-modal-mega hidden" id="modal-mega"></div>
+          <div class="asset-modal-mega hidden"  id="modal-mega"></div>
         </div>
       </div>
     </div>
@@ -86,12 +85,33 @@
         </div>
 
         <div class="cf-row">
-          <label class="cf-label">CARD PREVIEW <span class="cf-req">required · max 50</span></label>
+          <label class="cf-label">CARD PREVIEW <span class="cf-req">required · max 50 chars</span></label>
           <div class="cf-input-wrap">
-            <input class="cf-input" id="cf-card-desc" type="text" maxlength="50" placeholder="Short description shown on the card">
+            <input class="cf-input" id="cf-card-desc" type="text" maxlength="50" placeholder="Short line shown on the card">
             <span class="cf-counter" id="cf-card-counter">0/50</span>
           </div>
         </div>
+
+        <div class="cf-row">
+          <label class="cf-label">FULL DESCRIPTION <span class="cf-opt">optional · supports rich text · max 4096</span></label>
+          <div class="rich-editor">
+            <div class="rich-toolbar">
+              <button class="rt-btn rt-bold"   type="button" onclick="richWrap('[b]','[/b]')"            title="Bold">B</button>
+              <button class="rt-btn rt-italic" type="button" onclick="richWrap('[i]','[/i]')"            title="Italic">I</button>
+              <div class="rt-sep"></div>
+              <button class="rt-color" style="background:var(--accent)"  type="button" onclick="richWrap('[color:accent]','[/color]')" title="Purple"></button>
+              <button class="rt-color" style="background:var(--green)"   type="button" onclick="richWrap('[color:green]','[/color]')"  title="Green"></button>
+              <button class="rt-color" style="background:var(--gold)"    type="button" onclick="richWrap('[color:gold]','[/color]')"   title="Gold"></button>
+              <button class="rt-color" style="background:var(--blue)"    type="button" onclick="richWrap('[color:blue]','[/color]')"   title="Blue"></button>
+              <button class="rt-color" style="background:var(--red)"     type="button" onclick="richWrap('[color:red]','[/color]')"    title="Red"></button>
+              <div class="rt-sep"></div>
+              <button class="rt-btn rt-preview-btn" type="button" onclick="toggleRichPreview()" id="rt-preview-btn">preview</button>
+            </div>
+            <textarea class="cf-textarea rich-textarea" id="cf-desc" maxlength="4096"
+              placeholder="Full description (supports [b]bold[/b], [i]italic[/i], [color:accent]colored[/color])"></textarea>
+            <div class="rich-preview hidden" id="rich-preview"></div>
+            <div class="cf-counter-right" id="cf-desc-counter">0/4096</div>
+          </div>
         </div>
 
         <div class="cf-row">
@@ -104,7 +124,7 @@
           <input class="cf-input cf-mono" id="cf-key" type="text" placeholder="nexuscollective_...">
         </div>
 
-        <div class="cf-row" id="cf-links-row">
+        <div class="cf-row">
           <label class="cf-label">EXTERNAL LINKS <span class="cf-opt">optional · max 6</span></label>
           <div id="cf-links-list"></div>
           <button class="cf-add-link" type="button" onclick="addLinkField()" id="cf-add-link-btn">+ add link</button>
@@ -118,13 +138,13 @@
         <div class="cf-error hidden" id="cf-error"></div>
 
         <div class="cf-actions">
-          <button class="btn-back" onclick="closeCreateModal()">cancel</button>
+          <button class="btn-back"   onclick="closeCreateModal()">cancel</button>
           <button class="btn-verify" id="cf-submit" onclick="submitCreateForm()">POST ASSET</button>
         </div>
 
-      </div>
-    </div>
-  </div>
+      </div><!-- /create-modal-body -->
+    </div><!-- /create-modal -->
+  </div><!-- /create-modal-overlay -->
 
   <!-- NAV -->
   <nav class="site-nav">
@@ -145,7 +165,7 @@
     </div>
   </nav>
 
-  <!-- VAULT STATES -->
+  <!-- VAULT -->
   <main class="vault-main">
 
     <div class="vault-loading" id="vault-loading">
@@ -160,78 +180,48 @@
       <a href="/" class="profile-gate-link">Back to home</a>
     </div>
 
-    <!-- member but no access tier yet -->
-    <div class="vault-pending hidden" id="vault-pending">
-      <div class="vault-pending-inner">
-        <div class="vault-pending-eyebrow">NEXUS COLLECTIVE / VAULT</div>
-        <div class="vault-pending-title">YOU'RE IN.<br>ALMOST.</div>
-        <div class="vault-pending-body">
-          You're a verified member but you need a higher tier to access resources.<br>
-          Community Resources open up at <span class="hl">Trusted</span> rank.<br><br>
-          The fastest way to rank up is to be active in the Nexus Discord —<br>
-          chat, contribute, and get noticed by staff.
-        </div>
-        <a href="https://discord.gg/sHsGnyfbu5" target="_blank" rel="noopener" class="vault-discord-btn">
-          <img src="assets/discord.svg" width="16" height="16" alt="">
-          Open Nexus Discord
-        </a>
-        <div class="vault-pending-tiers">
-          <div class="vpt-label">ACCESS TIERS</div>
-          <div class="vpt-row"><span class="vpt-tier" style="color:var(--green)">TRUSTED</span><span class="vpt-desc">Community Resources</span></div>
-          <div class="vpt-row"><span class="vpt-tier" style="color:var(--blue)">HIGHLY TRUSTED</span><span class="vpt-desc">Official Resources + posting to Community</span></div>
-          <div class="vpt-row"><span class="vpt-tier" style="color:var(--accent)">CONTRIBUTOR</span><span class="vpt-desc">Contributor Resources + full read/write</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- the actual vault -->
+    <!-- the vault -->
     <div class="vault-content hidden" id="vault-content">
-      <div class="vault-inner">
 
-        <div class="vault-hero">
-          <div class="vault-hero-eyebrow">NEXUS COLLECTIVE</div>
-          <div class="vault-hero-title">THE VAULT</div>
-          <div class="vault-hero-sub">Private asset library. Your tier determines access.</div>
+      <!-- LEFT SIDEBAR — section picker -->
+      <aside class="vault-sidebar">
+        <div class="vault-sidebar-header">
+          <div class="vault-sidebar-eyebrow">NEXUS COLLECTIVE</div>
+          <div class="vault-sidebar-title">THE VAULT</div>
+          <div class="vault-sidebar-sub">Select a section</div>
         </div>
 
-        <!-- Community Resources -->
-        <section class="vault-section" id="section-community">
-          <div class="vault-section-header">
-            <div class="vault-section-label">
-              <span class="vsb trusted">TRUSTED+</span>
-              Community Resources
-            </div>
-            <div class="vault-section-count" id="count-community"></div>
-          </div>
-          <div class="vault-grid" id="grid-community"></div>
-        </section>
+        <div class="vault-tabs" id="vault-tabs">
+          <button class="vault-tab active" data-section="community" onclick="switchSection('community')">
+            <span class="vault-tab-badge trusted">TRUSTED+</span>
+            <span class="vault-tab-label">Community</span>
+            <span class="vault-tab-count" id="tab-count-community">0</span>
+          </button>
+          <button class="vault-tab" data-section="contributor" onclick="switchSection('contributor')">
+            <span class="vault-tab-badge contributor">CONTRIBUTOR</span>
+            <span class="vault-tab-label">Contributor</span>
+            <span class="vault-tab-count" id="tab-count-contributor">0</span>
+          </button>
+          <button class="vault-tab" data-section="official" onclick="switchSection('official')">
+            <span class="vault-tab-badge official">HI-TRUST+</span>
+            <span class="vault-tab-label">Official</span>
+            <span class="vault-tab-count" id="tab-count-official">0</span>
+          </button>
+        </div>
 
-        <!-- Contributor Resources -->
-        <section class="vault-section" id="section-contributor">
-          <div class="vault-section-header">
-            <div class="vault-section-label">
-              <span class="vsb contributor">CONTRIBUTOR</span>
-              Contributor Resources
-            </div>
-            <div class="vault-section-count" id="count-contributor"></div>
-          </div>
-          <div class="vault-grid" id="grid-contributor"></div>
-        </section>
+        <div class="vault-member-notice hidden" id="vault-member-notice">
+          <span class="vmn-dot"></span>
+          <span>Rank up in the <a href="https://discord.gg/sHsGnyfbu5" target="_blank" class="hl-link">Discord</a> to unlock sections.</span>
+        </div>
+      </aside>
 
-        <!-- Official Resources -->
-        <section class="vault-section" id="section-official">
-          <div class="vault-section-header">
-            <div class="vault-section-label">
-              <span class="vsb official">HIGHLY TRUSTED+</span>
-              Official Resources
-            </div>
-            <div class="vault-section-count" id="count-official"></div>
-          </div>
-          <div class="vault-grid" id="grid-official"></div>
-        </section>
-
+      <!-- RIGHT — grid area -->
+      <div class="vault-body">
+        <div class="vault-section-title" id="vault-section-title">Community Resources</div>
+        <div class="vault-grid" id="vault-grid"></div>
       </div>
-    </div>
+
+    </div><!-- /vault-content -->
 
   </main>
 

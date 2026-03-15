@@ -20,11 +20,23 @@ var _cards     = [];    // all cards from assets-list
 var _openId    = null;  // currently open asset id
 var _openData  = null;  // full data for open asset
 var _linkCount = 0;     // external link fields in create form
+var _activeSection = 'community'; // currently selected section tab
 
 /* ====================================================
    BOOT
    ==================================================== */
 document.addEventListener('DOMContentLoaded', bootVault);
+
+function showVaultError(msg) {
+  var gate = document.getElementById('vault-gate');
+  if (!gate) return;
+  var title = gate.querySelector('.vault-gate-title');
+  var body  = gate.querySelector('.vault-gate-body');
+  if (title) title.textContent = 'SOMETHING WENT WRONG';
+  if (title) title.style.color = 'var(--gold)';
+  if (body)  body.textContent  = msg;
+  show('vault-gate');
+}
 
 async function bootVault() {
   pingActivity();
@@ -36,6 +48,12 @@ async function bootVault() {
 
     if (res.status === 401) { window.location.href = '/'; return; }
 
+    if (res.status === 500) {
+      hide('vault-loading');
+      showVaultError('Server error — check Vercel logs and env vars.');
+      return;
+    }
+
     if (data.notVerified || res.status === 403) {
       hide('vault-loading');
       show('vault-gate');
@@ -44,7 +62,7 @@ async function bootVault() {
 
     if (!res.ok) {
       hide('vault-loading');
-      show('vault-gate');
+      showVaultError('Unexpected error (' + res.status + ').');
       return;
     }
 
@@ -139,26 +157,47 @@ function showMemberNotice() {
    RENDER VAULT
    ==================================================== */
 function renderVault() {
+  // Update all tab counts
   ['community', 'contributor', 'official'].forEach(function(sec) {
-    var sectionCards = _cards.filter(function(c) { return c.section === sec; });
-    var grid = document.getElementById('grid-' + sec);
-    var count = document.getElementById('count-' + sec);
-    if (!grid) return;
-    grid.innerHTML = '';
-    if (count) count.textContent = sectionCards.length + ' resource' + (sectionCards.length !== 1 ? 's' : '');
-
-    if (sectionCards.length === 0) {
-      var empty = document.createElement('div');
-      empty.className = 'vault-empty';
-      empty.textContent = 'No resources posted yet.';
-      grid.appendChild(empty);
-      return;
-    }
-
-    sectionCards.forEach(function(card) {
-      grid.appendChild(makeCard(card));
-    });
+    var n = _cards.filter(function(c) { return c.section === sec; }).length;
+    var ct = document.getElementById('tab-count-' + sec);
+    if (ct) ct.textContent = n;
   });
+  // Render active section
+  renderSection(_activeSection);
+}
+
+function renderSection(sec) {
+  var grid  = document.getElementById('vault-grid');
+  var title = document.getElementById('vault-section-title');
+  if (!grid) return;
+
+  var labels = { community: 'Community Resources', contributor: 'Contributor Resources', official: 'Official Resources' };
+  if (title) title.textContent = labels[sec] || sec;
+
+  var sectionCards = _cards.filter(function(c) { return c.section === sec; });
+  grid.innerHTML = '';
+
+  if (sectionCards.length === 0) {
+    var empty = document.createElement('div');
+    empty.className = 'vault-empty';
+    empty.textContent = 'No resources posted yet.';
+    grid.appendChild(empty);
+    return;
+  }
+
+  sectionCards.forEach(function(card) {
+    grid.appendChild(makeCard(card));
+  });
+}
+
+function switchSection(sec) {
+  _activeSection = sec;
+  // Update tab active state
+  document.querySelectorAll('.vault-tab').forEach(function(tab) {
+    tab.classList.toggle('active', tab.getAttribute('data-section') === sec);
+  });
+  renderSection(sec);
 }
 
 function makeCard(card) {
@@ -686,15 +725,7 @@ function initVaultSecurity() {
     else hideLeak();
   });
 
-  // Window focus loss — debounced so DevTools / address bar don't trigger it
-  var _blurTimer = null;
-  window.addEventListener('blur', function() {
-    _blurTimer = setTimeout(showLeak, 800);
-  });
-  window.addEventListener('focus', function() {
-    clearTimeout(_blurTimer);
-    hideLeak();
-  });
+  // No blur listener — causes lag and false positives
 
   // PrintScreen key — best-effort, not reliable on all OS
   document.addEventListener('keydown', function(e) {
