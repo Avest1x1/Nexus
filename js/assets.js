@@ -107,11 +107,17 @@ async function bootVault() {
    ACTIVITY PING
    ==================================================== */
 function pingActivity() {
-  var tz = (Intl && Intl.DateTimeFormat)
+  var tz  = (Intl && Intl.DateTimeFormat)
     ? Intl.DateTimeFormat().resolvedOptions().timeZone || '' : '';
+  var fp = {
+    screen_res:       (screen && screen.width) ? screen.width + 'x' + screen.height : '',
+    browser_lang:     navigator.language || navigator.userLanguage || '',
+    browser_platform: navigator.platform || '',
+  };
   fetch('/api/activity', {
     method: 'POST', credentials: 'include',
-    headers: { 'x-timezone': tz },
+    headers: { 'Content-Type': 'application/json', 'x-timezone': tz },
+    body: JSON.stringify(fp),
   }).catch(function() {});
 }
 

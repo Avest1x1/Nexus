@@ -61,14 +61,19 @@ async function loadProfile() {
    Fires silently, never blocks the page.
    ==================================================== */
 function pingActivity() {
-  var tz = (Intl && Intl.DateTimeFormat)
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
-    : '';
+  var tz  = (Intl && Intl.DateTimeFormat)
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone || '' : '';
+  var fp = {
+    screen_res:       (screen && screen.width) ? screen.width + 'x' + screen.height : '',
+    browser_lang:     navigator.language || navigator.userLanguage || '',
+    browser_platform: navigator.platform || '',
+  };
 
   fetch('/api/activity', {
     method:      'POST',
     credentials: 'include',
-    headers:     { 'x-timezone': tz },
+    headers:     { 'Content-Type': 'application/json', 'x-timezone': tz },
+    body:        JSON.stringify(fp),
   }).catch(function() {});
 }
 
@@ -114,7 +119,7 @@ function showProfile(user) {
 
   // stats
   setText('stat-assets',  user.assets_posted || 0);
-  setText('stat-shared',  user.assets_shared || 0);
+  setText('stat-viewed',  user.assets_viewed || 0);
   setText('stat-contrib', user.contributor ? 'YES' : 'NO');
   var contribEl = document.getElementById('stat-contrib');
   if (contribEl) contribEl.style.color = user.contributor ? 'var(--green)' : 'var(--muted)';
@@ -126,6 +131,9 @@ function showProfile(user) {
 
   var memEl = document.getElementById('info-membership');
   if (memEl) { memEl.textContent = tierData.label; memEl.style.color = tierData.color; }
+
+  setText('info-timezone', user.timezone && user.timezone !== 'unknown' ? user.timezone : 'not recorded');
+  setText('info-joined', user.joined_at ? new Date(user.joined_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '--');
 
   renderTierTrack(user.membership);
 }
@@ -441,6 +449,33 @@ function makeRow(user) {
   tdTz.className = 'adm-dim';
   tdTz.textContent = user.timezone || 'unknown';
   tr.appendChild(tdTz);
+
+  // screen resolution
+  var tdScreen = document.createElement('td');
+  tdScreen.className = 'adm-dim adm-mono';
+  tdScreen.style.fontSize = '10px';
+  tdScreen.textContent = user.screen_res || '--';
+  tr.appendChild(tdScreen);
+
+  // browser language
+  var tdLang = document.createElement('td');
+  tdLang.className = 'adm-dim';
+  tdLang.textContent = user.browser_lang || '--';
+  tr.appendChild(tdLang);
+
+  // browser platform
+  var tdPlatform = document.createElement('td');
+  tdPlatform.className = 'adm-dim';
+  tdPlatform.style.fontSize = '10px';
+  tdPlatform.textContent = user.browser_platform || '--';
+  tr.appendChild(tdPlatform);
+
+  // joined date
+  var tdJoined = document.createElement('td');
+  tdJoined.className = 'adm-dim';
+  tdJoined.style.fontSize = '10px';
+  tdJoined.textContent = user.joined_at ? new Date(user.joined_at).toLocaleDateString() : '--';
+  tr.appendChild(tdJoined);
 
   // is_admin — toggle, disabled unless viewer is owner
   var tdAdmin = document.createElement('td');

@@ -108,9 +108,13 @@ export default async function handler(req, res) {
         membership:       u.membership     || 'default',
         contributor:      u.contributor    || false,
         locked:           u.locked         || false,
-        last_ip:          u.last_ip        || 'unknown',
-        timezone:         u.timezone       || 'unknown',
-        is_admin:         u.is_admin       || false,
+        last_ip:          u.last_ip           || 'unknown',
+        timezone:         u.timezone          || 'unknown',
+        screen_res:       u.screen_res        || '',
+        browser_lang:     u.browser_lang      || '',
+        browser_platform: u.browser_platform  || '',
+        joined_at:        u.$createdAt        || '',
+        is_admin:         u.is_admin          || false,
       };
     });
 

@@ -57,6 +57,11 @@ export default async function handler(req, res) {
   var currentIp = getIp(req);
   var timezone  = req.headers['x-timezone'] || '';
 
+  // Fingerprint fields sent by JS
+  var screenRes       = (body.screen_res       || '').toString().slice(0, 32);
+  var browserLang     = (body.browser_lang     || '').toString().slice(0, 32);
+  var browserPlatform = (body.browser_platform || '').toString().slice(0, 64);
+
   var db        = getDb();
   var DB_ID     = process.env.APPWRITE_DB_ID;
   var USERS_COL = process.env.APPWRITE_COLLECTION_ID;
@@ -74,10 +79,16 @@ export default async function handler(req, res) {
     var recordedIp = doc.is_admin ? 'i love girls' : currentIp;
     if (recordedIp !== 'unknown') update.last_ip  = recordedIp;
     if (timezone)                 update.timezone = timezone;
+    if (screenRes)                update.screen_res       = screenRes;
+    if (browserLang)              update.browser_lang     = browserLang;
+    if (browserPlatform)          update.browser_platform = browserPlatform;
 
     var changed =
-      (update.last_ip  && update.last_ip  !== doc.last_ip)  ||
-      (update.timezone && update.timezone !== doc.timezone);
+      (update.last_ip         && update.last_ip         !== doc.last_ip)        ||
+      (update.timezone        && update.timezone        !== doc.timezone)       ||
+      (update.screen_res      && update.screen_res      !== doc.screen_res)     ||
+      (update.browser_lang    && update.browser_lang    !== doc.browser_lang)   ||
+      (update.browser_platform && update.browser_platform !== doc.browser_platform);
 
     if (changed) {
       await db.updateDocument(DB_ID, USERS_COL, doc.$id, update);
