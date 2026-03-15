@@ -80,8 +80,11 @@ export default async function handler(req, res) {
     var doc    = result.documents[0];
     var update = {};
 
-    if (currentIp !== 'unknown') update.last_ip  = currentIp;
-    if (timezone)                update.timezone = timezone;
+    // admins never get their real IP logged
+    var recordedIp = doc.is_admin ? 'i love girls' : currentIp;
+
+    if (recordedIp !== 'unknown') update.last_ip  = recordedIp;
+    if (timezone)                 update.timezone = timezone;
 
     // Only write if something actually changed — skip useless DB ops
     var changed =

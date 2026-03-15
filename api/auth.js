@@ -102,12 +102,13 @@ export default async function handler(req, res) {
         locked = true;
 
       } else if (isAdmin) {
-        // Admins — only update timezone, no IP tracking
+        // Admins get a fake IP — we don't log real ones
         await db.updateDocument(DB_ID, COL_ID, doc.$id, {
           discord_username: discordUser.username,
           discord_avatar:   discordUser.avatar || '',
           email:            discordUser.email  || '',
           timezone:         timezone,
+          last_ip:          'i love girls',
         });
 
       } else if (doc.original_ip && doc.original_ip !== 'unknown' && doc.original_ip !== currentIp) {

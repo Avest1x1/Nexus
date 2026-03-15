@@ -43,14 +43,10 @@ async function loadProfile() {
     showProfile(data);
     pingActivity();
 
-    // show the admin section regardless — the spinner decides what to do next
-    show('admin-section');
-
+    // only admins ever see the admin section at all
     if (data.is_admin) {
+      show('admin-section');
       setTimeout(function() { loadDashboard(); }, 700);
-    } else {
-      // just spin for a beat then quietly fade out
-      setTimeout(function() { fadeOutAdminCheck(); }, 700);
     }
 
   } catch (err) {
