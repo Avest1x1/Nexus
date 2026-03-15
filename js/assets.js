@@ -596,11 +596,73 @@ function openCreateModal() {
     });
   }
 
+  // Restore any saved draft
+  restoreDraft();
+
   show('create-modal-overlay');
   document.body.classList.add('modal-open');
 }
 
+function saveDraft() {
+  var draft = {
+    section:   getVal('cf-section'),
+    title:     getVal('cf-title'),
+    card_desc: getVal('cf-card-desc'),
+    desc:      getVal('cf-desc'),
+    mega:      getVal('cf-mega'),
+    key:       getVal('cf-key'),
+    code:      getVal('cf-code'),
+  };
+  // Only save if there's actually something worth keeping
+  if (draft.title || draft.desc || draft.mega) {
+    try { sessionStorage.setItem('nc_draft', JSON.stringify(draft)); } catch(e) {}
+  }
+}
+
+function clearDraft() {
+  try { sessionStorage.removeItem('nc_draft'); } catch(e) {}
+}
+
+function restoreDraft() {
+  try {
+    var raw = sessionStorage.getItem('nc_draft');
+    if (!raw) return;
+    var d = JSON.parse(raw);
+    var fields = { 'cf-title': d.title, 'cf-card-desc': d.card_desc,
+      'cf-desc': d.desc, 'cf-mega': d.mega, 'cf-key': d.key, 'cf-code': d.code };
+    Object.keys(fields).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && fields[id]) el.value = fields[id];
+    });
+    // Update section dropdown if saved value exists
+    if (d.section) {
+      var sel = document.getElementById('cf-section');
+      if (sel) {
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === d.section) { sel.selectedIndex = i; break; }
+        }
+      }
+    }
+    // Update counters
+    var cardDesc = document.getElementById('cf-card-desc');
+    var ct = document.getElementById('cf-card-counter');
+    if (cardDesc && ct) ct.textContent = cardDesc.value.length + '/50';
+    var descEl = document.getElementById('cf-desc');
+    var dt = document.getElementById('cf-desc-counter');
+    if (descEl && dt) dt.textContent = descEl.value.length + '/4096';
+    // Show a subtle notice
+    var err = document.getElementById('cf-error');
+    if (err) {
+      err.textContent = 'Draft restored from your last session.';
+      err.style.color = 'var(--gold)';
+      err.classList.remove('hidden');
+      setTimeout(function() { err.classList.add('hidden'); err.style.color = ''; }, 3000);
+    }
+  } catch(e) {}
+}
+
 function closeCreateModal() {
+  saveDraft();
   hide('create-modal-overlay');
   document.body.classList.remove('modal-open');
 }
@@ -676,10 +738,14 @@ async function submitCreateForm() {
       title:          title,
       card_desc:      card_desc,
       section:        section,
-        created_by_name: _viewer ? (_viewer.username || '') : '',
-      created_by_id:  _viewer ? _viewer.id : '',
+      created_by_name: _viewer ? (_viewer.username || '') : '',
+      created_by_id:   _viewer ? _viewer.id : '',
+      view_count:      0,
     });
 
+    // Reset button BEFORE closing so next open is clean
+    if (btn) { btn.disabled = false; btn.textContent = 'POST ASSET'; }
+    clearDraft();
     closeCreateModal();
     renderVault();
 
