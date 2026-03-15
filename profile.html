@@ -15,7 +15,6 @@
   <div id="cur-ring"></div>
   <canvas id="bg-canvas"></canvas>
 
-  <!-- NAV -->
   <nav class="site-nav">
     <a href="/" class="nav-logo">
       <div class="nav-logo-dot"></div>
@@ -33,83 +32,114 @@
     </div>
   </nav>
 
-  <!-- MAIN -->
   <main class="profile-main">
+    <div class="profile-container">
 
-    <!-- loading state -->
-    <div class="profile-loading" id="profile-loading">
-      <div class="pre-ring"></div>
-    </div>
+      <div class="profile-loading" id="profile-loading">
+        <div class="pre-ring"></div>
+      </div>
 
-    <!-- not logged in -->
-    <div class="profile-gate hidden" id="profile-gate">
-      <div class="profile-gate-eyebrow">NEXUS COLLECTIVE</div>
-      <div class="profile-gate-title">ACCESS DENIED</div>
-      <div class="profile-gate-body">You must be logged in to view your profile.</div>
-      <a href="/" class="profile-gate-link">Return to Home</a>
-    </div>
+      <div class="profile-gate hidden" id="profile-gate">
+        <div class="profile-gate-eyebrow">NEXUS COLLECTIVE</div>
+        <div class="profile-gate-title">ACCESS DENIED</div>
+        <div class="profile-gate-body">You must be logged in to view your profile.</div>
+        <a href="/" class="profile-gate-link">Return to Home</a>
+      </div>
 
-    <!-- profile content -->
-    <div class="profile-wrap hidden" id="profile-wrap">
+      <div class="profile-wrap hidden" id="profile-wrap">
 
-      <!-- header row -->
-      <div class="profile-header">
-        <div class="profile-avatar-wrap">
-          <div class="profile-avatar-ring" id="profile-avatar-ring"></div>
-          <img class="profile-avatar-img" id="profile-avatar" src="assets/user.svg" alt="">
-        </div>
-        <div class="profile-header-text">
-          <div class="profile-eyebrow">NEXUS COLLECTIVE &mdash; MEMBER PROFILE</div>
-          <div class="profile-username" id="profile-username">————</div>
-          <div class="profile-badge-row" id="profile-badge-row">
-            <!-- injected by JS -->
+        <div class="profile-header">
+          <div class="profile-avatar-wrap">
+            <div class="profile-avatar-ring" id="profile-avatar-ring"></div>
+            <img class="profile-avatar-img" id="profile-avatar" src="assets/user.svg" alt="">
+          </div>
+          <div class="profile-header-text">
+            <div class="profile-eyebrow">NEXUS COLLECTIVE &mdash; MEMBER PROFILE</div>
+            <div class="profile-username" id="profile-username">————</div>
+            <div class="profile-badge-row" id="profile-badge-row"></div>
           </div>
         </div>
+
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <div class="profile-stat-num" id="stat-assets">0</div>
+            <div class="profile-stat-label">ASSETS POSTED</div>
+          </div>
+          <div class="profile-stat-sep"></div>
+          <div class="profile-stat">
+            <div class="profile-stat-num" id="stat-shared">0</div>
+            <div class="profile-stat-label">ASSETS SHARED</div>
+          </div>
+          <div class="profile-stat-sep"></div>
+          <div class="profile-stat">
+            <div class="profile-stat-num" id="stat-contrib">--</div>
+            <div class="profile-stat-label">CONTRIBUTOR</div>
+          </div>
+        </div>
+
+        <div class="profile-section-label">ACCOUNT DETAILS</div>
+        <div class="profile-info-grid">
+          <div class="profile-info-cell">
+            <div class="profile-info-key">DISCORD ACCOUNT</div>
+            <div class="profile-info-val" id="info-discord">--</div>
+          </div>
+          <div class="profile-info-cell">
+            <div class="profile-info-key">EMAIL ADDRESS</div>
+            <div class="profile-info-val" id="info-email">--</div>
+          </div>
+          <div class="profile-info-cell">
+            <div class="profile-info-key">DISCORD ID</div>
+            <div class="profile-info-val profile-info-dim" id="info-discord-id">--</div>
+          </div>
+          <div class="profile-info-cell">
+            <div class="profile-info-key">MEMBERSHIP STATUS</div>
+            <div class="profile-info-val" id="info-membership">--</div>
+          </div>
+        </div>
+
+        <div class="profile-section-label">ACCESS TIER</div>
+        <div class="tier-track" id="tier-track"></div>
+
       </div>
 
-      <!-- stat row -->
-      <div class="profile-stats">
-        <div class="profile-stat">
-          <div class="profile-stat-num" id="stat-assets">0</div>
-          <div class="profile-stat-label">ASSETS POSTED</div>
-        </div>
-        <div class="profile-stat-sep"></div>
-        <div class="profile-stat">
-          <div class="profile-stat-num" id="stat-shared">0</div>
-          <div class="profile-stat-label">ASSETS SHARED</div>
-        </div>
-        <div class="profile-stat-sep"></div>
-        <div class="profile-stat">
-          <div class="profile-stat-num" id="stat-contrib">—</div>
-          <div class="profile-stat-label">CONTRIBUTOR</div>
-        </div>
-      </div>
+      <!-- ADMIN SECTION -->
+      <div class="admin-section hidden" id="admin-section">
 
-      <!-- info grid -->
-      <div class="profile-section-label">ACCOUNT DETAILS</div>
-      <div class="profile-info-grid">
-        <div class="profile-info-cell">
-          <div class="profile-info-key">DISCORD ACCOUNT</div>
-          <div class="profile-info-val" id="info-discord">—</div>
+        <div class="admin-check" id="admin-check">
+          <div class="admin-check-ring"></div>
+          <div class="admin-check-label">CHECKING CLEARANCE</div>
         </div>
-        <div class="profile-info-cell">
-          <div class="profile-info-key">EMAIL ADDRESS</div>
-          <div class="profile-info-val" id="info-email">—</div>
-        </div>
-        <div class="profile-info-cell">
-          <div class="profile-info-key">DISCORD ID</div>
-          <div class="profile-info-val profile-info-dim" id="info-discord-id">—</div>
-        </div>
-        <div class="profile-info-cell">
-          <div class="profile-info-key">MEMBERSHIP STATUS</div>
-          <div class="profile-info-val" id="info-membership">—</div>
-        </div>
-      </div>
 
-      <!-- tier track -->
-      <div class="profile-section-label">ACCESS TIER</div>
-      <div class="tier-track" id="tier-track">
-        <!-- injected by JS -->
+        <div class="admin-card hidden" id="admin-card">
+          <div class="admin-card-header">
+            <div class="admin-card-title-row">
+              <span class="admin-card-label">ADMIN DASHBOARD</span>
+              <span class="admin-member-count" id="admin-member-count"></span>
+            </div>
+            <div class="admin-card-sub">
+              Full read/write access active. IP and timezone are passive logs.
+              Only the platform owner can modify administrator status.
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>USERNAME</th>
+                  <th>EMAIL</th>
+                  <th>MEMBERSHIP</th>
+                  <th>CONTRIBUTOR</th>
+                  <th>LOCKED</th>
+                  <th>LAST IP</th>
+                  <th>TIMEZONE</th>
+                  <th>ADMIN</th>
+                </tr>
+              </thead>
+              <tbody id="admin-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
 
     </div>
