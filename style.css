@@ -20,6 +20,9 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* Global hidden utility — every hide() call relies on this */
+.hidden { display: none !important; }
+
 html { scroll-behavior: smooth; overflow-x: hidden; }
 
 body {
@@ -54,6 +57,7 @@ body {
 
 #cur-ring {
   position: fixed;
+  opacity: 0;
   width: 26px; height: 26px;
   border: 1px solid rgba(212,79,255,0.35);
   border-radius: 50%;

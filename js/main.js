@@ -31,11 +31,17 @@ var _onUI = false;
   var ring = document.getElementById('cur-ring');
   if (!dot || !ring) return;
 
+  var _ringVisible = false;
   document.addEventListener('mousemove', function(e) {
     _mx = e.clientX;
     _my = e.clientY;
     dot.style.left = _mx + 'px';
     dot.style.top  = _my + 'px';
+    if (!_ringVisible) {
+      _ringVisible = true;
+      ring.style.transition = 'opacity 0.3s ease';
+      ring.style.opacity = '1';
+    }
   }, { passive: true });
 
   (function loop() {
