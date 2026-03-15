@@ -1,7 +1,8 @@
 {
   "rewrites": [
     { "source": "/callback", "destination": "/callback.html" },
-    { "source": "/profile",  "destination": "/profile.html"  }
+    { "source": "/profile",  "destination": "/profile.html"  },
+    { "source": "/assets",   "destination": "/assets.html"    }
   ],
   "headers": [
     {

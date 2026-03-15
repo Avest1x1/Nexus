@@ -64,10 +64,10 @@ var _onUI = false;
   var ctx = canvas.getContext('2d');
 
   var W = 0, H = 0;
-  var POOL_SIZE    = 55;   // fixed immortal particles
-  var CONNECT_DIST = 120;
+  var POOL_SIZE    = 72;   // fixed immortal particles (+30%)
+  var CONNECT_DIST = 156;
   var CONNECT_SQ   = CONNECT_DIST * CONNECT_DIST;
-  var REPEL_DIST   = 90;
+  var REPEL_DIST   = 117;
   var REPEL_SQ     = REPEL_DIST * REPEL_DIST;
 
   // Throttle to ~30fps
@@ -108,7 +108,7 @@ var _onUI = false;
   canvas.style.pointerEvents = 'auto';
   canvas.addEventListener('click', function(e) {
     if (_onUI) return;
-    for (var b = 0; b < 7; b++) {
+    for (var b = 0; b < 9; b++) {
       var p = makePart(e.clientX, e.clientY, true);
       p.vx = (Math.random() - 0.5) * 2.2;
       p.vy = (Math.random() - 0.5) * 2.2;
