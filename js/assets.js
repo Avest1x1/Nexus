@@ -69,6 +69,18 @@ async function bootVault() {
     _viewer = data.viewer;
     _cards  = data.cards || [];
 
+    // Wire nav avatar/badge — renderUserState is from main.js
+    if (typeof renderUserState === 'function') {
+      renderUserState({
+        id:         _viewer.id,
+        username:   _viewer.username || '',
+        avatar:     _viewer.avatar   || '',
+        locked:     false,
+        membership: _viewer.membership,
+        is_admin:   _viewer.is_admin,
+      });
+    }
+
     // member tier but no section access yet
     if (!_viewer.is_admin &&
         _viewer.membership === 'member' &&

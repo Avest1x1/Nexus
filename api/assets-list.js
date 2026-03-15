@@ -124,6 +124,8 @@ export default async function handler(req, res) {
     cards: cards,
     viewer: {
       id:          userRow.discord_id,
+      username:    userRow.discord_username || '',
+      avatar:      userRow.discord_avatar   || '',
       membership:  userRow.membership,
       contributor: userRow.contributor  || false,
       is_admin:    userRow.is_admin     || false,
