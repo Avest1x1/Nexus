@@ -27,8 +27,11 @@ var error  = params.get('error');
   }
 
   try {
+    var tz = (Intl && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown' : 'unknown';
+
     var res  = await fetch('/api/auth?code=' + encodeURIComponent(code), {
       credentials: 'include',
+      headers: { 'x-timezone': tz },
     });
     var data = await res.json();
 

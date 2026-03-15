@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROFILE / NEXUS COLLECTIVE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-enter">
+
+  <div id="preloader"><div class="pre-ring"></div></div>
+  <div id="cur-dot"></div>
+  <div id="cur-ring"></div>
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- NAV -->
+  <nav class="site-nav">
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-dot"></div>
+      NEXUS
+    </a>
+    <div class="nav-right">
+      <div class="nav-user hidden" id="nav-user">
+        <div class="nav-avatar">
+          <img id="nav-avatar-img" src="assets/user.svg" alt="" width="14" height="14">
+        </div>
+        <span class="nav-username" id="nav-uname"></span>
+        <span class="nav-role-badge hidden" id="nav-role"></span>
+      </div>
+      <button class="nav-logout" onclick="logout()">logout</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="profile-main">
+
+    <!-- loading state -->
+    <div class="profile-loading" id="profile-loading">
+      <div class="pre-ring"></div>
+    </div>
+
+    <!-- not logged in -->
+    <div class="profile-gate hidden" id="profile-gate">
+      <div class="profile-gate-eyebrow">NEXUS COLLECTIVE</div>
+      <div class="profile-gate-title">ACCESS DENIED</div>
+      <div class="profile-gate-body">You must be logged in to view your profile.</div>
+      <a href="/" class="profile-gate-link">Return to Home</a>
+    </div>
+
+    <!-- profile content -->
+    <div class="profile-wrap hidden" id="profile-wrap">
+
+      <!-- header row -->
+      <div class="profile-header">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar-ring" id="profile-avatar-ring"></div>
+          <img class="profile-avatar-img" id="profile-avatar" src="assets/user.svg" alt="">
+        </div>
+        <div class="profile-header-text">
+          <div class="profile-eyebrow">NEXUS COLLECTIVE &mdash; MEMBER PROFILE</div>
+          <div class="profile-username" id="profile-username">————</div>
+          <div class="profile-badge-row" id="profile-badge-row">
+            <!-- injected by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- stat row -->
+      <div class="profile-stats">
+        <div class="profile-stat">
+          <div class="profile-stat-num" id="stat-assets">0</div>
+          <div class="profile-stat-label">ASSETS POSTED</div>
+        </div>
+        <div class="profile-stat-sep"></div>
+        <div class="profile-stat">
+          <div class="profile-stat-num" id="stat-shared">0</div>
+          <div class="profile-stat-label">ASSETS SHARED</div>
+        </div>
+        <div class="profile-stat-sep"></div>
+        <div class="profile-stat">
+          <div class="profile-stat-num" id="stat-contrib">—</div>
+          <div class="profile-stat-label">CONTRIBUTOR</div>
+        </div>
+      </div>
+
+      <!-- info grid -->
+      <div class="profile-section-label">ACCOUNT DETAILS</div>
+      <div class="profile-info-grid">
+        <div class="profile-info-cell">
+          <div class="profile-info-key">DISCORD ACCOUNT</div>
+          <div class="profile-info-val" id="info-discord">—</div>
+        </div>
+        <div class="profile-info-cell">
+          <div class="profile-info-key">EMAIL ADDRESS</div>
+          <div class="profile-info-val" id="info-email">—</div>
+        </div>
+        <div class="profile-info-cell">
+          <div class="profile-info-key">DISCORD ID</div>
+          <div class="profile-info-val profile-info-dim" id="info-discord-id">—</div>
+        </div>
+        <div class="profile-info-cell">
+          <div class="profile-info-key">MEMBERSHIP STATUS</div>
+          <div class="profile-info-val" id="info-membership">—</div>
+        </div>
+      </div>
+
+      <!-- tier track -->
+      <div class="profile-section-label">ACCESS TIER</div>
+      <div class="tier-track" id="tier-track">
+        <!-- injected by JS -->
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span id="year"></span> &mdash; NEXUS COLLECTIVE &mdash; LYMEWARE INDUSTRIES
+  </footer>
+
+  <script src="js/main.js"></script>
+  <script src="js/profile.js"></script>
+</body>
+</html>
